@@ -1,24 +1,34 @@
 # Roadmap de desarrollo — SFV Solar Platform
 
-Fecha: 2026-07-05. Plan de desarrollo hacia la plataforma profesional de diseño e ingeniería de sistemas fotovoltaicos para Colombia descrita en `MANUAL_MAESTRO_INGENIERIA_SOLAR_COLOMBIA.md` y `GUIA_PRACTICA_COMO_DISENAR_INSTALAR_SISTEMA_SOLAR.md`, partiendo del estado real del código (ver `PROJECT_ANALYSIS.md`): un MVP de una sola calculadora de dimensionamiento preliminar, sin backend, sin persistencia, sin normativa aplicada en código.
+Fecha: 2026-07-05 (actualizado tras la migración a plataforma SaaS). Plan de desarrollo hacia la plataforma profesional de diseño e ingeniería de sistemas fotovoltaicos para Colombia descrita en `MANUAL_MAESTRO_INGENIERIA_SOLAR_COLOMBIA.md` y `GUIA_PRACTICA_COMO_DISENAR_INSTALAR_SISTEMA_SOLAR.md`.
 
-Este roadmap prioriza: (1) consolidar y sanear la base actual, (2) construir el motor de cálculo de ingeniería con validación normativa real, (3) construir la plataforma alrededor de ese motor. No se recomienda empezar por el frontend visual (3D, unifilares interactivos) antes de tener un motor de cálculo correcto y auditable.
+Este roadmap prioriza: (1) consolidar y sanear la base actual, (2) construir el motor de cálculo de ingeniería con validación normativa real, (3) construir la plataforma alrededor de ese motor. No se recomienda empezar por el frontend visual 3D antes de tener un motor de cálculo correcto y auditable.
 
 ---
 
-## Fase 0: Saneamiento de la base actual (prerrequisito, antes de Fase 1)
+## Fase 0: Saneamiento de la base actual — ✅ Completada (2026-07-05)
 
-Objetivo: dejar el repositorio en un estado limpio y mantenible antes de agregar funcionalidad nueva. Ver detalle en `IMPROVEMENTS.md`.
+- [x] Primer commit de Git.
+- [x] Eliminados `vite.config.js` / `vite.config.d.ts` residuales; solo queda `vite.config.ts`.
+- [x] `vite`, `@vitejs/plugin-react`, `typescript` reclasificados como `devDependencies`.
+- [x] Motor de cálculo extraído a `src/services/calculations/dimensioning.ts` (módulo puro).
+- [ ] ESLint + Prettier (o Biome) — pendiente, ver `TODO.md`.
+- [ ] Framework de testing (Vitest) — pendiente, ver `TODO.md`.
+- [x] Assets decorativos de terceros (video/avatares del MVP original) retirados en el nuevo diseño; la landing ya no depende de un CDN ajeno.
 
-- Hacer el primer commit de Git (hoy no existe ninguno).
-- Eliminar `vite.config.js` / `vite.config.d.ts` residuales; dejar solo `vite.config.ts`.
-- Reclasificar `vite`, `@vitejs/plugin-react`, `typescript` como `devDependencies`.
-- Configurar ESLint + Prettier (o Biome) y un framework de testing (Vitest, coherente con Vite).
-- Extraer `NumberField`, `AvatarStack`, `CommandItem` a `src/components/`.
-- Extraer el motor de cálculo actual (`useMemo` en `App.tsx`) a un módulo puro testeable (`src/lib/` o `src/domain/`).
-- Decidir y documentar la fuente de los assets decorativos (video/avatares de terceros) antes de cualquier despliegue visible a clientes reales.
+## Fase 0.5: Migración a plataforma SaaS (frontend) — ✅ Completada (2026-07-05)
 
-**Prioridad: alta.** Es barato hacerlo ahora; costoso hacerlo después de que el código crezca.
+No estaba en la versión anterior de este roadmap; se ejecutó como un salto explícito pedido por el usuario para tener una base de producto completa antes de profundizar en el motor de ingeniería. Incluyó:
+
+- [x] Routing completo (React Router 6): landing pública, auth, dashboard protegido.
+- [x] Sistema de diseño nuevo con modo claro/oscuro, glassmorphism, gradientes y animaciones.
+- [x] Dashboard con proyectos, clientes, cotizaciones, catálogo, reportes, configuración, administrador.
+- [x] Arquitectura preparada para multitenant, roles, licencias/suscripciones, versionado y compartir proyectos (modelos e interfaces, sin backend real todavía — ver `ARCHITECTURE.md`).
+- [x] Repositorio genérico intercambiable `localStorage` ↔ API REST (`Repository<T>`).
+- [x] Interfaces listas (sin implementación real) para mapas, recurso solar y exportación PDF/Excel.
+- [x] `render.yaml` + README para despliegue en Render Free.
+
+Esta fase adelanta parte de lo que antes era "Fase 4" (routing real, panel de proyecto) y parte de "Fase 5" (arquitectura multitenant, roles). Las secciones siguientes se ajustaron para no duplicar ese trabajo.
 
 ---
 
@@ -74,11 +84,11 @@ Objetivo: cerrar el ciclo de valor para el cliente final, más allá del cálcul
 
 Objetivo: elevar la experiencia de usuario de "una calculadora" a "un panel de diseño de ingeniería", siguiendo las 6 pantallas ya especificadas en la Guía Práctica §12 (datos del proyecto, consumo, techo/terreno, selector de equipos, resultado técnico, instalación guiada).
 
-- **Simulación del sistema**: producción horaria/mensual, autoconsumo, excedentes, importación desde red y clipping, sustituyendo el modelo HSP×PR fijo por series reales.
+- **Simulación del sistema**: producción horaria/mensual, autoconsumo, excedentes, importación desde red y clipping, sustituyendo el modelo HSP×PR fijo por series reales. Conectar `src/services/simulation/weatherProvider.ts` a un proveedor real (NASA POWER/PVGIS/Open-Meteo).
 - **Simulación 3D / layout de cubierta**: importación o dibujo de techo, obstáculos y sombras (Three.js, según Manual Maestro §13), cálculo de número máximo de paneles por área real y pasillos de mantenimiento.
-- **Comparador de equipos**: catálogo de paneles/inversores/baterías con fichas normalizadas (de la biblioteca de Fase 1) y comparación lado a lado.
-- **Panel de proyecto** con guardado real (requiere backend + base de datos — ver Fase 5), no solo estado efímero de React como hoy.
-- Migrar de "una sola página con anchors" a routing real (múltiples proyectos, múltiples pantallas del flujo).
+- **Comparador de equipos**: el catálogo (`src/services/catalog`) ya existe con datos mock; falta reemplazar por fichas normalizadas reales y agregar comparación lado a lado.
+- **Geocodificación real** de la ubicación del proyecto conectando `src/services/maps/mapProvider.ts` (hoy `MapPreviewPlaceholder` es solo visual).
+- ~~Migrar de "una sola página con anchors" a routing real~~ — completado en Fase 0.5.
 
 **Prioridad: media.** Tiene alto impacto de percepción de producto, pero depende de que el motor de cálculo (Fase 2) y el modelo de datos (Fase 1) ya sean sólidos; construir la superficie visual antes arriesga tener que rehacerla.
 
@@ -89,8 +99,8 @@ Objetivo: elevar la experiencia de usuario de "una calculadora" a "un panel de d
 Objetivo: pasar de "app cliente-only" a plataforma real multiusuario, cubriendo el ciclo de vida completo del proyecto (instalación, comisionamiento, mantenimiento).
 
 - Backend (Python + FastAPI según especificación del Manual Maestro §13) exponiendo el motor de cálculo de Fase 2 como servicio, con las mismas pruebas unitarias corriendo del lado servidor.
-- Base de datos PostgreSQL para los modelos de Fase 1; jobs asíncronos (Celery/RQ) para simulaciones pesadas.
-- Autenticación y autorización por rol: diseñador, instalador, supervisor, cliente, auditor.
+- Base de datos PostgreSQL para los modelos ya tipados en el frontend (`src/models`, `src/interfaces`) desde Fase 0.5; jobs asíncronos (Celery/RQ) para simulaciones pesadas.
+- Autenticación real detrás de `AuthContext` (hoy es mock local) y autorización por rol: diseñador, instalador, supervisor, cliente, auditor — el tipo `Role` ya existe en `src/interfaces/user.ts`.
 - **Asistente de instalación paso a paso**: checklist interactiva por proyecto (ya existe el checklist estático en Manual Maestro §8 y Guía Práctica §11 como base de contenido), con captura de evidencia real: fotos, mediciones (Voc/Isc por string), torque, seriales de equipo y firma de acta.
 - **Diagnóstico de fallas**: implementar los árboles de decisión ya documentados (Manual Maestro §10) como flujo interactivo, con biblioteca de códigos de error por fabricante.
 - **Monitoreo y mantenimiento (O&M)**: tickets de mantenimiento preventivo/correctivo/predictivo, con las frecuencias ya sugeridas en Manual Maestro §9.
@@ -104,8 +114,10 @@ Objetivo: pasar de "app cliente-only" a plataforma real multiusuario, cubriendo 
 - **Asistente IA con RAG** sobre manuales oficiales de fabricantes y normativa cargada (Manual Maestro §13, punto 12 y §14 Fase 5): debe responder solo con base en documentos cargados y citar la fuente; prohibido inventar valores de ficha técnica. El botón "Let AI revisar" y el bloque "Asistente solar" ya presentes en la UI actual son placeholders visuales de esta funcionalidad futura — no conectarlos a un LLM genérico sin RAG y sin control de alucinación, dado el riesgo de seguridad eléctrica de una recomendación incorrecta.
 - **Revisor automático de diseños** vía IA, apoyado en el motor de reglas de Fase 2.
 - **Integración CAD** (exportación DXF/DWG) para planos.
-- **Multi-tenant / multi-empresa** si el producto se comercializa a instaladores terceros, no solo a un único equipo.
+- **API pública** para integraciones de terceros, sobre el mismo contrato ya definido en `src/api/endpoints.ts`.
 - **Internacionalización a otros países LatAm** con sus propias normativas (hoy el foco es exclusivamente Colombia, correctamente acotado en ambos manuales).
+
+> Nota: el multitenant/multiempresa ya no es "futuro" — el modelo de datos lo asume desde Fase 0.5 (ver `ARCHITECTURE.md` §3). Lo pendiente es la aplicación real del límite de organización en el backend.
 
 ---
 

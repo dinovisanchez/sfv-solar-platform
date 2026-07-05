@@ -1,181 +1,115 @@
 # Análisis del Proyecto — SFV Solar Platform
 
-Fecha del análisis: 2026-07-05
-Rol: Arquitecto de Software Senior / Ingeniero Especialista en Sistemas Fotovoltaicos.
+Fecha de esta versión: 2026-07-05 (actualizado tras la migración a plataforma SaaS).
+Rol: Arquitecto de Software Senior / UX-UI Designer Senior / Ingeniero Especialista en Sistemas Fotovoltaicos.
 
-Alcance: análisis estático completo del repositorio (todo el código fuente, configuración y documentación existente, excluyendo `node_modules`, `dist`, `.git`). No se modificó ningún archivo durante este análisis.
+> Esta es la versión vigente del análisis. La versión anterior describía el proyecto cuando era un MVP de una sola calculadora sin routing ni backend-ready architecture; ese estado quedó documentado en el historial de Git y en `CHANGELOG.md`.
 
 ---
 
 ## 1. Resumen del proyecto
 
-`sfv-solar-platform` es, en su estado actual, un **MVP de un único componente**: una calculadora de dimensionamiento solar fotovoltaico preliminar, envuelta en una landing page de una sola pantalla. El código corresponde casi exactamente a la sección "Primer módulo de software que conviene construir" descrita en `GUIA_PRACTICA_COMO_DISENAR_INSTALAR_SISTEMA_SOLAR.md` (sección 14): consumo mensual → cobertura objetivo → HSP → número de paneles → relación DC/AC → energía mensual estimada.
+`sfv-solar-platform` es una plataforma web tipo SaaS para el diseño, simulación y gestión de proyectos de ingeniería fotovoltaica en Colombia. Es una SPA (React + Vite + TypeScript + Tailwind + React Router), sin backend todavía, pero con toda la arquitectura de frontend preparada para evolucionar a un producto comercial multiempresa: landing pública, autenticación (mock local), dashboard de proyectos, módulos de ingeniería (dimensionamiento, financiero, y stubs estructurados para producción/eléctrico/BOM/diagramas/reportes), catálogo de equipos, y puntos de extensión explícitos para mapas, recurso solar, exportación de reportes y una futura API REST.
 
-El repositorio contiene, sin embargo, una **visión mucho más amplia** documentada en dos manuales Markdown extensos (43 KB combinados) que describen la plataforma objetivo: un sistema profesional de ingeniería FV para Colombia con dimensionamiento completo (paneles, inversores, baterías, protecciones, cableado), cumplimiento normativo (RETIE, NTC 2050, IEC, UL, IEEE), simulación energética, generación de BOM, diagramas unifilares, análisis financiero, asistente de instalación guiada y un asistente de IA con RAG sobre documentación oficial.
-
-**Estado real vs. visión documentada: brecha muy grande.** El código implementado cubre aproximadamente el 2-3% del alcance descrito en los manuales. Es, en esencia, un prototipo visual/UX (probablemente generado con una herramienta de diseño AI, dado el video de fondo y los avatares alojados en un CDN externo `higgs.ai`) que valida la fórmula de dimensionamiento básica, no una plataforma de ingeniería.
+El motor de cálculo original (dimensionamiento HSP × PR) se conservó íntegro — se extrajo a `src/services/calculations/dimensioning.ts` y ahora se reutiliza dentro del dashboard en vez de vivir en un único componente de página.
 
 ## 2. Arquitectura
 
-Arquitectura actual: **SPA de una sola página, sin backend, sin persistencia, sin routing.**
+Capas separadas por responsabilidad (ver `ARCHITECTURE.md` para el detalle):
 
 ```
-┌─────────────────────────────┐
-│         index.html          │  ← punto de entrada Vite
-└──────────────┬───────────────┘
-               │
-        src/main.tsx           ← monta React en #root (StrictMode)
-               │
-         src/App.tsx           ← TODO el estado y TODA la lógica de negocio
-               │                  (un único componente de ~500 líneas)
-               ├── useState x5 (inputs del formulario)
-               ├── useMemo (motor de cálculo inline)
-               ├── NumberField (subcomponente local, no exportado)
-               ├── AvatarStack (subcomponente local, decorativo)
-               ├── CommandItem (subcomponente local, decorativo)
-               │
-               └── src/components/TaskCard.tsx  ← único componente compartido real
+Rutas (src/routes/AppRoutes.tsx)
+  → Layouts (Public / Auth / Dashboard)
+    → Pages (landing, auth, dashboard, catalog)
+      → Components (ui / layout / landing / dashboard / engineering)
+        → Hooks (useAuth, useTheme, useRepositoryList, ...)
+          → Services (calculations, projects, clients, quotes, catalog, export, maps, simulation, storage)
+            → Models / Interfaces (contratos de dominio, independientes de la UI)
 ```
 
-No existen: enrutador, cliente HTTP, estado global (Redux/Zustand/Context), capa de servicios, modelos de datos persistentes, tests, linter configurado, ni backend de ningún tipo. Todo el "motor de cálculo" vive en un `useMemo` de 20 líneas dentro de `App.tsx`.
+Todavía no hay backend: los "servicios" de datos (`projectRepository`, `clientRepository`, `quoteRepository`) implementan la interfaz genérica `Repository<T>` (`src/interfaces/repository.ts`) sobre `localStorage`. El día que exista una API REST, solo se reemplaza la implementación detrás de esa interfaz — las páginas no cambian.
 
-La arquitectura *documentada* (no implementada) en el Manual Maestro, sección 13, propone:
-- Frontend: Next.js + React + TypeScript + Three.js (visualización 3D) + Canvas/SVG (unifilares).
-- Backend: Python + FastAPI, motor de cálculo propio con pruebas unitarias, pvlib/PySAM para simulación.
-- Datos: PostgreSQL + pgvector para RAG.
-- Jobs asíncronos: Celery/RQ.
-- Autenticación por roles (diseñador, instalador, supervisor, cliente, auditor).
-
-Es decir, el proyecto real hoy es un fragmento de frontend puro; toda la arquitectura de backend, datos, normativa y simulación existe solo como especificación en Markdown.
-
-## 3. Estructura de carpetas y archivos
+## 3. Estructura de carpetas
 
 ```
-SFV/
-├── index.html                                  Entry point HTML (Vite)
-├── package.json                                 Manifiesto npm, scripts dev/build/preview
-├── package-lock.json
-├── vite.config.ts                               Config real (fuente de verdad)
-├── vite.config.js / vite.config.d.ts            Artefactos JS compilados residuales (ver IMPROVEMENTS.md)
-├── tsconfig.json                                Config TS para src/ (strict: true)
-├── tsconfig.node.json                           Config TS para el propio vite.config.ts
-├── tsconfig.node.tsbuildinfo / tsconfig.tsbuildinfo   Caches incrementales de TS (no deberían versionarse)
-├── tailwind.config.js                            Tailwind apuntando a index.html y src/**/*.{js,ts,jsx,tsx}
-├── postcss.config.js                             tailwindcss + autoprefixer
-├── .gitignore
-├── MANUAL_MAESTRO_INGENIERIA_SOLAR_COLOMBIA.md    Manual técnico-normativo completo (visión de producto)
-├── GUIA_PRACTICA_COMO_DISENAR_INSTALAR_SISTEMA_SOLAR.md  Guía metodológica paso a paso
-├── dist/                                         Build ya generado (index.html + assets JS/CSS hasheados)
-├── node_modules/                                 101 paquetes de nivel superior, coherente con package.json
-└── src/
-    ├── main.tsx                                  Bootstrap de React (createRoot + StrictMode)
-    ├── index.css                                 Tailwind directives + estilos globales + keyframes
-    ├── App.tsx                                    Único "módulo funcional": UI + estado + cálculo
-    └── components/
-        └── TaskCard.tsx                           Único componente reutilizable real (tarjeta genérica)
+src/
+├── api/              cliente HTTP base + endpoints REST futuros (sin uso real todavía)
+├── assets/           (reservado; sin dependencias de CDN de terceros)
+├── components/
+│   ├── ui/            Button, Card, Badge, Input, Select, Tabs, StatCard, DataTable, EmptyState, ThemeToggle, Logo
+│   ├── layout/         Navbar, Footer, Sidebar, Topbar
+│   ├── landing/        Hero, Features, Modules, Screenshots, Pricing, FAQ, CTASection
+│   ├── dashboard/       DashboardPage (wrapper), TaskCard (heredado del MVP, adaptado a dark mode)
+│   └── engineering/     NumberSliderField, MapPreviewPlaceholder
+├── config/            site.ts (contenido de landing/nav/planes/FAQ), env.ts
+├── constants/          routes.ts, navigation.ts
+├── context/            ThemeContext, AuthContext
+├── hooks/               useTheme, useAuth, useLocalStorage, useRepositoryList
+├── interfaces/          repository, tenant, user, subscription, mapProvider, weatherProvider, exportProvider
+├── layouts/             PublicLayout, AuthLayout, DashboardLayout
+├── models/              project, client, quote, report, catalog
+├── pages/
+│   ├── landing/HomePage.tsx
+│   ├── auth/            LoginPage, RegisterPage, ForgotPasswordPage
+│   ├── dashboard/        OverviewPage, ProjectsListPage, ProjectDetailPage, ClientsPage, QuotesPage,
+│   │                     ReportsPage, SettingsPage, AdminPage, ProfilePage
+│   │   └── project/       GeneralTab, DimensioningTab, ProductionTab, ElectricalTab, FinancialTab,
+│   │                       BOMTab, DiagramsTab, ReportsTab
+│   ├── catalog/CatalogListPage.tsx (genérico, parametrizado por categoría)
+│   └── misc/NotFoundPage.tsx
+├── routes/              AppRoutes.tsx, ProtectedRoute.tsx
+├── services/
+│   ├── calculations/     dimensioning.ts (motor original extraído), financial.ts (VPN/TIR/payback/ROI reales)
+│   ├── storage/          localStorageRepository.ts (factoría genérica Repository<T>)
+│   ├── projects/ clients/ quotes/  repositorios concretos sobre la factoría
+│   ├── catalog/           categories.ts, mockData.ts
+│   ├── export/            pdfExporter.ts, excelExporter.ts (interfaz lista, implementación pendiente)
+│   ├── maps/               mapProvider.ts (Google/OSM/Mapbox, interfaz lista, pendiente)
+│   └── simulation/         weatherProvider.ts (NASA POWER/PVGIS/Open-Meteo, interfaz lista, pendiente)
+├── styles/globals.css     Tailwind + tokens de tema claro/oscuro + glassmorphism + animaciones
+├── types/common.ts        Id, Timestamps, Paginated<T>, ApiResult<T>, SelectOption
+└── utils/                 cn.ts, formatters.ts
 ```
 
-No existen carpetas para: `services/`, `hooks/`, `utils/`, `models/`, `types/` (compartidos), `pages/`, `api/`, `tests/`, `lib/`. No hay separación entre lógica de negocio y presentación.
+## 4. Tecnologías
 
-## 4. Explicación de cada módulo
+- **React 18 + TypeScript 5.8 (strict)** — sin cambios respecto al MVP original.
+- **Vite 7** con alias `@/` → `src/` (vía `vite.config.ts` + `tsconfig.json`).
+- **React Router 6** — rutas públicas, de autenticación y protegidas (`/app/*`).
+- **Tailwind CSS 3** con `darkMode: "class"`, paleta de marca (`brand`, `solar`), gradientes y animaciones propias.
+- **clsx** para composición condicional de clases (`src/utils/cn.ts`).
+- **lucide-react** para iconografía.
+- Sin dependencias de servicios de terceros con datos reales todavía (mapas, clima, PDF/Excel son interfaces sin implementar).
 
-### `index.html`
-Metadatos SEO básicos en español, precarga de fuente Google "Instrument Serif", monta `#root` y carga `src/main.tsx` como módulo ES.
-
-### `src/main.tsx`
-Bootstrap estándar de Vite + React 18: `ReactDOM.createRoot(...).render(<StrictMode><App/></StrictMode>)`. Sin providers, sin router, sin error boundary.
-
-### `src/App.tsx`
-Contiene:
-- **Datos hardcodeados de contenido decorativo**: una URL de video de fondo (`backgroundVideo`) y tres URLs de avatar (`avatarUrls`), todas apuntando a un CDN de terceros (`d8j0ntlcm91z4.cloudfront.net`, `images.higgs.ai`) asociado a una cuenta de usuario específica (`user_38xzZboKViGWJOttwIXH07lWA1P`). Esto es contenido de una plantilla/mockup de diseño, no activos propios del proyecto.
-- **`AvatarStack`**: componente decorativo que apila avatares circulares.
-- **Estado del formulario** (5 `useState`): `monthlyKwh`, `coverage`, `hsp`, `panelW`, `inverterKw`. `performanceRatio` está fijo en `0.8` (no editable, documentado en la UI como "Fijo para esta primera etapa").
-- **Motor de cálculo** (`useMemo`): implementa exactamente el pseudocódigo `dimensionarSistema()` de la Guía Práctica sección 14:
-  - `dailyConsumption = monthlyKwh / 30`
-  - `targetDailyEnergy = dailyConsumption * (coverage / 100)`
-  - `requiredKwp = targetDailyEnergy / (hsp * performanceRatio)`
-  - `panels = ceil(requiredKwp * 1000 / panelW)`
-  - `realDcKwp = panels * panelW / 1000`
-  - `dcAcRatio = realDcKwp / inverterKw`
-  - `estimatedMonthly = realDcKwp * hsp * performanceRatio * 30`
-- **`efficiencyScore`**: `min(99, round(estimatedMonthly / monthlyKwh * 100))`, mostrado como "Cobertura estimada del consumo".
-- **UI**: header con navegación ficticia (anclas `#dimensionador`, `#instalacion`, `#normas`, `#ia` sin contenido real detrás salvo `#dimensionador` y las dos tarjetas con esos ids), tarjetas de resultado (`TaskCard`) para "Arreglo fotovoltaico", "Compatibilidad inversor" e "Instalación guiada", panel lateral con "Comandos rápidos" (decorativo, sin funcionalidad) y un bloque de "Asistente solar" con un mock de forma de onda de audio (estático, sin grabación real) y un botón de micrófono sin handler.
-- **`NumberField`**: input numérico + slider sincronizados, únicos controles interactivos reales de la app.
-- **`CommandItem`**: fila de comando con botón "play" sin handler (decorativo).
-
-### `src/components/TaskCard.tsx`
-Único componente genuinamente reutilizable. Tarjeta con icono, título, tag de color (`green|yellow|red|blue`), hasta 3 pares detalle label/value, contenido inferior izquierdo arbitrario (`ReactNode`) y botón con 3 variantes de estilo. Bien tipado con TypeScript, sin lógica de negocio.
-
-### `src/index.css`
-Directivas Tailwind + reset mínimo + fuente serif de despliegue + animación `fadeUp` usada en casi todos los bloques de `App.tsx` + estilo de acento para `input[type=range]`.
-
-### Documentación (`.md`)
-- **`MANUAL_MAESTRO_INGENIERIA_SOLAR_COLOMBIA.md`**: manual normativo-técnico de referencia (RETIE, NTC 2050, IEC/UL/IEEE, tipos de sistema, componentes, fórmulas de dimensionamiento, procedimiento de instalación, comisionamiento, O&M, biblioteca de fallas, arquitectura de plataforma objetivo, modelo de datos, motor de reglas, roadmap de 5 fases). Es la fuente de verdad conceptual del dominio.
-- **`GUIA_PRACTICA_COMO_DISENAR_INSTALAR_SISTEMA_SOLAR.md`**: guía metodológica paso a paso con ejemplos numéricos didácticos (los mismos números que terminaron implementados en `App.tsx`) y mockups de las 6 pantallas que debería tener el frontend.
-
-Ambos documentos son de **alta calidad como especificación de dominio**, pero no son documentación del código existente (no describen `TaskCard`, ni la estructura real de carpetas, ni decisiones técnicas tomadas). Son visión de producto, no ADRs ni documentación de arquitectura del código actual.
-
-## 5. Flujo de funcionamiento (estado actual)
+## 5. Flujo de funcionamiento
 
 ```
-Usuario abre la SPA
-  -> ve video de fondo + header + tarjeta "Hola, ingeniero"
-  -> ajusta 5 controles (consumo, cobertura, HSP, W panel, kW inversor)
-  -> useMemo recalcula instantáneamente en el cliente (sin red, sin backend)
-  -> se re-renderizan: % de cobertura estimada, métricas del sistema (kWp DC, paneles, DC/AC),
-     tarjeta de arreglo FV, tarjeta de compatibilidad de inversor (con alerta visual si DC/AC > 1.35),
-     tarjeta de instalación guiada (checklist estático, no interactivo)
-  -> el resto de la UI (comandos rápidos, asistente de voz, "siguiente fase") es enteramente decorativo,
-     sin estado ni efecto
+Visitante → Landing (/) → Registro/Login (mock local) → /app (protegido)
+  → Overview: métricas agregadas de proyectos/clientes/cotizaciones (localStorage)
+  → Proyectos: crear/listar → Detalle de proyecto con tabs
+      General (cliente, ubicación, coordenadas, empresa, fecha, estado)
+      Dimensionamiento (motor de cálculo real, idéntico al MVP original)
+      Producción / Diseño eléctrico (estructura lista, cálculo pendiente)
+      Financiero (VPN/TIR/payback/ROI reales)
+      BOM / Diagramas (estructura lista, generación pendiente)
+      Reportes (botones de exportación PDF/Excel que exponen el contrato, implementación pendiente)
+  → Clientes, Cotizaciones, Catálogo, Reportes, Configuración, Administrador
 ```
 
-No hay persistencia entre sesiones (todo el estado se pierde al recargar), no hay guardado de proyectos, no hay exportación de nada, no hay llamadas de red salvo la carga de assets estáticos (video, imágenes, fuente).
-
-## 6. Dependencias importantes
-
-**Producción** (`dependencies`):
-| Paquete | Versión | Rol |
-|---|---|---|
-| `react` / `react-dom` | ^18.3.1 | UI |
-| `vite` | ^7.0.0 | Bundler/dev server — colocado en `dependencies` en vez de `devDependencies` |
-| `@vitejs/plugin-react` | ^5.0.0 | Fast Refresh / JSX — también debería ser dev dependency |
-| `typescript` | ^5.8.0 | Igual, herramienta de build, no runtime |
-| `lucide-react` | ^0.468.0 | Iconografía SVG |
-
-**Desarrollo** (`devDependencies`):
-| Paquete | Versión | Rol |
-|---|---|---|
-| `tailwindcss` | ^3.4.17 | Utilidades CSS |
-| `postcss` / `autoprefixer` | ^8.5.0 / ^10.4.20 | Pipeline CSS |
-| `@types/react`, `@types/react-dom` | — | Tipado |
-
-No hay: router, cliente HTTP (fetch nativo bastaría, pero no hay llamadas), gestor de estado, librería de formularios/validación, librería de gráficos/dashboards, testing framework (Jest/Vitest/Testing Library), linter (ESLint) ni formateador (Prettier) configurados.
-
-## 7. Tecnologías utilizadas
-
-- **React 18** (function components, hooks: `useState`, `useMemo`).
-- **TypeScript 5.8** en modo `strict`, `noEmit` (el build real lo hace Vite/esbuild, tsc solo verifica tipos).
-- **Vite 7** como bundler y dev server, plugin oficial de React.
-- **Tailwind CSS 3** + PostCSS + Autoprefixer para estilos utilitarios.
-- **lucide-react** para iconos SVG.
-- Fuente externa Google Fonts ("Instrument Serif").
-- Sin backend, sin base de datos, sin IA integrada (a pesar de la sección "Asistente solar" en la UI, que es puramente visual/mock).
-
-## 8. Estado actual del proyecto
+## 6. Estado actual
 
 | Aspecto | Estado |
 |---|---|
-| Control de versiones | Repositorio Git inicializado (`main`), **sin ningún commit todavía** — todo el árbol de trabajo está sin trackear |
-| Build | Compila y pasa el chequeo de tipos sin errores (`npx tsc --noEmit` limpio); existe un `dist/` ya generado |
-| Tests | Ninguno |
-| CI/CD | Ninguno |
-| Linting | Ninguno configurado |
-| Funcionalidad de negocio | Solo el cálculo preliminar de dimensionamiento (fórmula simple, sin validación normativa, sin fichas técnicas reales) |
-| Persistencia | Ninguna (todo en memoria del cliente) |
-| Backend/API | Inexistente |
-| Cumplimiento normativo (RETIE/NTC 2050) | No implementado en código; solo mencionado como texto estático en un panel ("Siguiente fase") |
-| Documentación de dominio | Extensa y de buena calidad (dos manuales), pero desconectada del código |
+| Routing | Completo: landing pública, auth, dashboard protegido |
+| Dark/Light mode | Completo, persistente en `localStorage`, respeta preferencia del sistema al primer uso |
+| Autenticación | Mock local (sin backend); arquitectura de roles y protección de rutas ya en su lugar |
+| Persistencia | `localStorage` detrás de `Repository<T>`, swappable a REST sin tocar páginas |
+| Dimensionamiento FV | Funcional, reutiliza el motor original |
+| Financiero (VPN/TIR/ROI/payback) | Funcional, fórmulas reales implementadas |
+| Producción, diseño eléctrico, BOM, diagramas | Estructura y navegación listas; cálculo/generación pendiente (ver `TODO.md`) |
+| Catálogo de equipos | Funcional con datos mock tipados, componente genérico por categoría |
+| Mapas / recurso solar / export PDF-Excel | Interfaces y stubs listos; sin proveedor real conectado |
+| Despliegue | `render.yaml` + README listos para Render Free (Static Site) |
+| Tests / CI | Sin cambios respecto al MVP: siguen sin existir (ver `TODO.md`) |
 
-**Conclusión de estado**: proyecto en fase de **prototipo visual inicial (MVP de una sola calculadora)**, con una especificación de producto muy madura y ambiciosa ya redactada, pero con menos del 5% de esa especificación llevada a código. El primer commit de Git ni siquiera se ha realizado.
-
-Ver `IMPROVEMENTS.md` para hallazgos técnicos detallados y `ROADMAP.md` para el plan de desarrollo propuesto hacia la plataforma completa descrita en los manuales.
+Ver `ARCHITECTURE.md` para las decisiones de escalabilidad (multitenant, licencias, versionado de proyectos, API REST futura) y `ROADMAP.md` para el plan de fases hacia el producto de ingeniería completo.
