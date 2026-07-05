@@ -1,0 +1,124 @@
+# Roadmap de desarrollo — SFV Solar Platform
+
+Fecha: 2026-07-05. Plan de desarrollo hacia la plataforma profesional de diseño e ingeniería de sistemas fotovoltaicos para Colombia descrita en `MANUAL_MAESTRO_INGENIERIA_SOLAR_COLOMBIA.md` y `GUIA_PRACTICA_COMO_DISENAR_INSTALAR_SISTEMA_SOLAR.md`, partiendo del estado real del código (ver `PROJECT_ANALYSIS.md`): un MVP de una sola calculadora de dimensionamiento preliminar, sin backend, sin persistencia, sin normativa aplicada en código.
+
+Este roadmap prioriza: (1) consolidar y sanear la base actual, (2) construir el motor de cálculo de ingeniería con validación normativa real, (3) construir la plataforma alrededor de ese motor. No se recomienda empezar por el frontend visual (3D, unifilares interactivos) antes de tener un motor de cálculo correcto y auditable.
+
+---
+
+## Fase 0: Saneamiento de la base actual (prerrequisito, antes de Fase 1)
+
+Objetivo: dejar el repositorio en un estado limpio y mantenible antes de agregar funcionalidad nueva. Ver detalle en `IMPROVEMENTS.md`.
+
+- Hacer el primer commit de Git (hoy no existe ninguno).
+- Eliminar `vite.config.js` / `vite.config.d.ts` residuales; dejar solo `vite.config.ts`.
+- Reclasificar `vite`, `@vitejs/plugin-react`, `typescript` como `devDependencies`.
+- Configurar ESLint + Prettier (o Biome) y un framework de testing (Vitest, coherente con Vite).
+- Extraer `NumberField`, `AvatarStack`, `CommandItem` a `src/components/`.
+- Extraer el motor de cálculo actual (`useMemo` en `App.tsx`) a un módulo puro testeable (`src/lib/` o `src/domain/`).
+- Decidir y documentar la fuente de los assets decorativos (video/avatares de terceros) antes de cualquier despliegue visible a clientes reales.
+
+**Prioridad: alta.** Es barato hacerlo ahora; costoso hacerlo después de que el código crezca.
+
+---
+
+## Fase 1: Base técnica y modelo de datos
+
+Objetivo: construir los cimientos de dominio que hoy no existen — tipos, modelos, biblioteca normativa, sin todavía UI compleja.
+
+- Definir modelos de dominio en TypeScript (y su equivalente de backend cuando exista), siguiendo el modelo de datos ya bosquejado en el Manual Maestro §13:
+  `Project`, `Site`, `LoadProfile`, `Tariff`, `PVModule`, `Inverter`, `Battery`, `MountingSystem`, `ProtectionDevice`, `Cable`, `Connector`, `StringDesign`, `ElectricalDesign`, `SimulationRun`, `Rule`, `ManufacturerDocument`, `InspectionChecklist`, `CommissioningTest`, `MaintenanceTicket`, `FaultCode`, `Report`.
+- Crear la carpeta de conocimiento estructurada que ya propone el Manual Maestro §18 (`knowledge/00_fuentes` … `14_software`) para almacenar fichas técnicas de fabricantes con metadatos versionados (fabricante, modelo, versión de documento, URL oficial, fecha de consulta, certificaciones, estado de revisión).
+- Cargar biblioteca inicial de normas aplicables en Colombia: RETIE (libros I–IV), NTC 2050, resoluciones CREG de generación distribuida/autogeneración, y normas internacionales de referencia (IEC 61215, 61730, 62548, 62446-1, 62109, 61643; IEEE 1547; UL 1741/9540).
+- Fichas normalizadas de al menos un fabricante por categoría (panel, inversor, batería) para poder validar el motor de reglas en Fase 2 contra datos reales, no solo ejemplos didácticos.
+- Definir esquema de checklist de instalación y de comisionamiento como datos estructurados (no solo texto en Markdown), listos para consumirse desde UI en Fase 4.
+
+**Prioridad: alta.** Sin este modelo, cualquier funcionalidad de cálculo nueva se seguirá construyendo como código desechable dentro de componentes de React, repitiendo el patrón actual.
+
+---
+
+## Fase 2: Motor de cálculo de ingeniería
+
+Objetivo: reemplazar la fórmula preliminar única de hoy por un motor de cálculo completo, versionado y con pruebas unitarias, cubriendo explícitamente lo solicitado:
+
+- **Dimensionamiento de paneles**: número de módulos, configuración de strings, ajuste por área de techo/estructura disponible (ya cubierto parcialmente hoy, generalizar).
+- **Dimensionamiento de inversores**: selección por potencia, relación DC/AC, rango MPPT, número de entradas, validación contra ficha técnica real (Voc/Vmp/Isc/Imp corregidos por temperatura vs. límites del inversor — fórmulas ya documentadas en Manual Maestro §6.3–6.5 y Guía Práctica §6).
+- **Dimensionamiento de baterías**: energía crítica diaria, autonomía, DoD usable, eficiencia round-trip, degradación (fórmula ya documentada en Manual Maestro §5.3 y Guía Práctica §7).
+- **Dimensionamiento de conductores** (DC y AC): por ampacidad, temperatura, agrupamiento y sección.
+- **Cálculo de caída de tensión**: DC (fórmula del factor 2 por ida/vuelta, Guía Práctica §8) y AC (monofásica/trifásica, Guía Práctica §9), con objetivo configurable (1–2% DC, 1–3% AC) y trazabilidad del cálculo, no solo un número final.
+- **Selección de protecciones eléctricas**: fusibles de string, seccionadores DC/AC, SPD tipo 1/2, diferencial cuando aplique, dimensionamiento de breaker AC por corriente nominal (fórmulas Guía Práctica §9).
+- **Cálculo de producción energética**: partir del modelo preliminar HSP×PR actual hacia series horarias/subhorarias reales (integración con PVWatts/pvlib/PySAM como referencia el Manual Maestro §3 y §13), incluyendo pérdidas por temperatura, mismatch, suciedad, sombreado y clipping.
+- **Motor de reglas normativas**: implementar como reglas ejecutables (no solo texto) los ejemplos ya definidos en Manual Maestro §13:
+  `Vstring_max < Vdc_max_inversor`, `Imp_string <= Imax_MPPT`, `Isc_corr <= Iscmax_MPPT`, compatibilidad de conectores, compatibilidad batería-inversor, límite de exportación por operador de red, vigencia de certificación RETIE de producto.
+- Cobertura de pruebas unitarias para cada fórmula, usando los ejemplos numéricos ya presentes en la Guía Práctica como casos de prueba dorados (los números de los documentos ya sirven de fixtures).
+
+**Prioridad: alta — es el corazón técnico del producto y el diferenciador real frente a una calculadora genérica.**
+
+---
+
+## Fase 3: Análisis financiero y documentación generada
+
+Objetivo: cerrar el ciclo de valor para el cliente final, más allá del cálculo eléctrico.
+
+- **Análisis financiero**: ROI, TIR (IRR), VPN (NPV), periodo de retorno simple y descontado, considerando tarifa eléctrica del cliente, degradación anual de producción, costos de O&M y, cuando aplique, ingresos por excedentes según reglas CREG vigentes.
+- **Lista de materiales (BOM)**: generación automática a partir del diseño (paneles, inversor, estructura, cableado, protecciones, conectores) con cantidades, marcas/modelos seleccionados y alternativas compatibles.
+- **Diagramas unifilares**: representación basada en datos del diseño (SVG/canvas dirigido por el modelo, no dibujo manual), coherente con el diagrama exigido para trámite ante operador de red (Manual Maestro §7).
+- **Generación automática de reportes en PDF**: memoria de cálculo, ficha resumen del proyecto, BOM, diagrama unifilar y checklist de cumplimiento normativo, exportables para el trámite regulatorio y para entrega al cliente.
+- **Cumplimiento RETIE / NTC 2050 / normas CREG**: checklist normativo visible en el propio reporte, con estado por ítem (cumple / no aplica / pendiente de verificación), no como advertencia genérica de texto (como hoy en el panel "Siguiente fase").
+
+**Prioridad: media-alta.** Es lo que convierte el motor de cálculo (Fase 2) en un entregable profesional utilizable frente a clientes y operadores de red.
+
+---
+
+## Fase 4: Simulación y frontend profesional completo
+
+Objetivo: elevar la experiencia de usuario de "una calculadora" a "un panel de diseño de ingeniería", siguiendo las 6 pantallas ya especificadas en la Guía Práctica §12 (datos del proyecto, consumo, techo/terreno, selector de equipos, resultado técnico, instalación guiada).
+
+- **Simulación del sistema**: producción horaria/mensual, autoconsumo, excedentes, importación desde red y clipping, sustituyendo el modelo HSP×PR fijo por series reales.
+- **Simulación 3D / layout de cubierta**: importación o dibujo de techo, obstáculos y sombras (Three.js, según Manual Maestro §13), cálculo de número máximo de paneles por área real y pasillos de mantenimiento.
+- **Comparador de equipos**: catálogo de paneles/inversores/baterías con fichas normalizadas (de la biblioteca de Fase 1) y comparación lado a lado.
+- **Panel de proyecto** con guardado real (requiere backend + base de datos — ver Fase 5), no solo estado efímero de React como hoy.
+- Migrar de "una sola página con anchors" a routing real (múltiples proyectos, múltiples pantallas del flujo).
+
+**Prioridad: media.** Tiene alto impacto de percepción de producto, pero depende de que el motor de cálculo (Fase 2) y el modelo de datos (Fase 1) ya sean sólidos; construir la superficie visual antes arriesga tener que rehacerla.
+
+---
+
+## Fase 5: Backend, persistencia, instalación guiada y O&M
+
+Objetivo: pasar de "app cliente-only" a plataforma real multiusuario, cubriendo el ciclo de vida completo del proyecto (instalación, comisionamiento, mantenimiento).
+
+- Backend (Python + FastAPI según especificación del Manual Maestro §13) exponiendo el motor de cálculo de Fase 2 como servicio, con las mismas pruebas unitarias corriendo del lado servidor.
+- Base de datos PostgreSQL para los modelos de Fase 1; jobs asíncronos (Celery/RQ) para simulaciones pesadas.
+- Autenticación y autorización por rol: diseñador, instalador, supervisor, cliente, auditor.
+- **Asistente de instalación paso a paso**: checklist interactiva por proyecto (ya existe el checklist estático en Manual Maestro §8 y Guía Práctica §11 como base de contenido), con captura de evidencia real: fotos, mediciones (Voc/Isc por string), torque, seriales de equipo y firma de acta.
+- **Diagnóstico de fallas**: implementar los árboles de decisión ya documentados (Manual Maestro §10) como flujo interactivo, con biblioteca de códigos de error por fabricante.
+- **Monitoreo y mantenimiento (O&M)**: tickets de mantenimiento preventivo/correctivo/predictivo, con las frecuencias ya sugeridas en Manual Maestro §9.
+
+**Prioridad: media.** Es indispensable para un producto de campo completo, pero solo tiene sentido una vez el diseño/cálculo (Fases 1–3) es confiable — instalar y mantener sistemas mal dimensionados no aporta valor.
+
+---
+
+## Funcionalidades futuras (post Fase 5)
+
+- **Asistente IA con RAG** sobre manuales oficiales de fabricantes y normativa cargada (Manual Maestro §13, punto 12 y §14 Fase 5): debe responder solo con base en documentos cargados y citar la fuente; prohibido inventar valores de ficha técnica. El botón "Let AI revisar" y el bloque "Asistente solar" ya presentes en la UI actual son placeholders visuales de esta funcionalidad futura — no conectarlos a un LLM genérico sin RAG y sin control de alucinación, dado el riesgo de seguridad eléctrica de una recomendación incorrecta.
+- **Revisor automático de diseños** vía IA, apoyado en el motor de reglas de Fase 2.
+- **Integración CAD** (exportación DXF/DWG) para planos.
+- **Multi-tenant / multi-empresa** si el producto se comercializa a instaladores terceros, no solo a un único equipo.
+- **Internacionalización a otros países LatAm** con sus propias normativas (hoy el foco es exclusivamente Colombia, correctamente acotado en ambos manuales).
+
+---
+
+## Prioridades — resumen ejecutivo
+
+| Prioridad | Fase | Razón |
+|---|---|---|
+| 1 | Fase 0 (saneamiento) | Barato ahora, base de todo lo demás |
+| 2 | Fase 1 (modelo de datos + normativa) | Sin esto, cada funcionalidad nueva se construye desechable |
+| 3 | Fase 2 (motor de cálculo) | Es el diferenciador técnico real del producto |
+| 4 | Fase 3 (financiero + reportes) | Convierte el cálculo en entregable profesional/comercial |
+| 5 | Fase 4 (frontend/simulación completa) | Alto impacto visual, pero depende de 1–2 |
+| 6 | Fase 5 (backend/instalación/O&M) | Ciclo de vida completo, depende de que el diseño ya sea confiable |
+| 7 | Futuras (IA/RAG, CAD, multi-tenant, LatAm) | Expansión una vez el core esté validado en campo |
+
+**Recomendación de secuencia inmediata**: Fase 0 → Fase 1 → Fase 2, antes de invertir más tiempo en la superficie visual. El código actual ya resuelve razonablemente bien "una pantalla bonita"; lo que falta y es más valioso es el motor de ingeniería detrás.
