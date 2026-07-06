@@ -1,5 +1,6 @@
 import {
   BarChart2,
+  Bot,
   FileStack,
   Home,
   Layers,
@@ -20,6 +21,7 @@ export type NavItem = {
 export const DASHBOARD_NAV: NavItem[] = [
   { label: "Inicio", path: ROUTES.app.overview, icon: Home },
   { label: "Mis proyectos", path: ROUTES.app.projects, icon: Layers },
+  { label: "Asistente IA", path: ROUTES.app.assistant, icon: Bot },
   { label: "Clientes", path: ROUTES.app.clients, icon: Users },
   { label: "Cotizaciones", path: ROUTES.app.quotes, icon: FileStack },
   { label: "Catálogo", path: ROUTES.app.catalog(), icon: PackageSearch },

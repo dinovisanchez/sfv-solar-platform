@@ -18,7 +18,7 @@ Page/Component
 
 | Capa | Carpeta | Responsabilidad |
 |---|---|---|
-| Rutas | `src/routes` | Mapear URL → layout → página. Guard de autenticación (`ProtectedRoute`) |
+| Rutas | `src/routes` | Mapear URL → layout → página. `ProtectedRoute` existe pero no está en uso — el dashboard es de acceso libre por decisión de producto (ver §10) |
 | Layouts | `src/layouts` | Cascarón visual compartido (público, auth, dashboard) |
 | Pages | `src/pages` | Composición de una pantalla a partir de components + hooks + services |
 | Components | `src/components` | UI reutilizable, sin acceso directo a datos (reciben props) |
@@ -87,4 +87,24 @@ Cuando exista la API REST (`src/api/client.ts` + `src/api/endpoints.ts` ya está
 
 - **No se implementó backend real.** Se pidió explícitamente dejar la arquitectura preparada, no construirlo.
 - **No se implementó PWA** (excluido explícitamente por el usuario).
-- **No se conectaron IA, mapas ni clima reales.** Son interfaces con implementación pendiente a propósito, para no acoplar la UI a una librería o proveedor específico antes de decidirlo.
+- **No se conectaron mapas ni clima reales.** Son interfaces con implementación pendiente a propósito, para no acoplar la UI a una librería o proveedor específico antes de decidirlo (el asistente IA sí se implementó, ver §11, pero en su variante local sin LLM externo).
+
+## 10. Dashboard de acceso libre (sin muro de login)
+
+Por decisión de producto, `/app/*` no requiere autenticación: `AppRoutes.tsx` monta `DashboardLayout` directamente, sin envolverlo en `ProtectedRoute`. Las razones y el trade-off:
+
+- La plataforma no se piensa como "una página para crear cuentas primero" — el valor (dimensionar, consultar el asistente, explorar el catálogo) debe estar disponible de inmediato.
+- `AuthContext` sigue existiendo y `user` puede ser `null` en cualquier momento; todos los componentes que lo leen (`Topbar`, `OverviewPage`, `ProfilePage`, `AdminPage`) degradan con gracia a un estado "invitado" en vez de asumir que siempre hay sesión.
+- Login/registro/recuperar contraseña (`src/pages/auth`) siguen existiendo y funcionando (`AuthContext` mock local) para quien quiera personalizar su sesión — solo dejaron de ser un requisito.
+- `ProtectedRoute.tsx` no se eliminó: es el punto de enganche cuando exista backend real y se decida exigir sesión (por ejemplo, para separar datos por organización de verdad en vez de la `org-demo` actual).
+
+## 11. Asistente IA local sobre los manuales (sin backend, sin LLM externo)
+
+`src/services/assistant/` implementa un asistente de preguntas y respuestas que corre enteramente en el navegador:
+
+1. **`knowledgeBase.ts`** importa `MANUAL_MAESTRO_INGENIERIA_SOLAR_COLOMBIA.md` y `GUIA_PRACTICA_COMO_DISENAR_INSTALAR_SISTEMA_SOLAR.md` con el sufijo `?raw` de Vite (se inlinean como texto en el bundle en build-time) y los parte en ~80 secciones por encabezado `##`/`###`.
+2. **`search.ts`** tokeniza la pregunta (minúsculas, sin tildes, sin stopwords en español) y puntúa cada sección por coincidencia de términos en encabezado (peso alto) y contenido (peso menor, con tope para no premiar texto repetitivo).
+3. **`formatAnswer.ts`** recorta el contenido a un extracto legible y expone las preguntas sugeridas de la UI.
+4. **`AssistantChat.tsx`** (componente reutilizable) muestra la conversación y cada respuesta cita el documento y el encabezado exacto de origen — nunca texto generado, solo lo que el manual dice.
+
+Por qué esta forma y no un LLM real todavía: cualquier recomendación incorrecta sobre dimensionamiento o normativa eléctrica tiene riesgo de seguridad real (ver Manual Maestro §16, "Advertencias técnicas críticas"). Un buscador local sobre fuentes fijas no puede alucinar; un LLM sin RAG estricto y sin backend para ocultar la llave de API, sí. Migrar a un LLM real más adelante (`ROADMAP.md`, funcionalidades futuras) debería mantener esta misma restricción: responder solo con fuente citada.

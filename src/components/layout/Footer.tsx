@@ -6,7 +6,7 @@ const footerColumns = [
   {
     title: "Producto",
     links: [
-      { label: "Dimensionador", href: "#modulos" },
+      { label: "Dimensionador", href: "/app/projects" },
       { label: "Características", href: "#caracteristicas" },
       { label: "Planes", href: "#planes" }
     ]
@@ -14,15 +14,16 @@ const footerColumns = [
   {
     title: "Recursos",
     links: [
+      { label: "Asistente IA solar", href: "/app/asistente" },
       { label: "Preguntas frecuentes", href: "#faq" },
       { label: "Normativa RETIE / NTC 2050", href: "#faq" }
     ]
   },
   {
-    title: "Cuenta",
+    title: "Plataforma",
     links: [
-      { label: "Iniciar sesión", href: "/login" },
-      { label: "Crear cuenta", href: "/register" }
+      { label: "Abrir dashboard", href: "/app" },
+      { label: "Personalizar sesión", href: "/login" }
     ]
   }
 ];

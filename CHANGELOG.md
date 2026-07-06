@@ -2,6 +2,20 @@
 
 Formato libre, en español, orientado a decisiones de producto/arquitectura más que a commits individuales.
 
+## [0.3.0] — 2026-07-05
+
+### Añadido
+
+- **Asistente IA local** (`src/services/assistant/`): búsqueda sobre el Manual Maestro y la Guía Práctica del propio repo, sin backend ni LLM externo. Cita siempre el documento y encabezado de origen; nunca inventa contenido. Disponible en `/app/asistente` y embebido en vivo en la landing (sección "Asistente solar").
+- Página `AssistantPage` y entrada "Asistente IA" en la navegación del dashboard.
+
+### Cambiado
+
+- **Dashboard de acceso libre**: se quitó el muro de login. `/app/*` ya no requiere autenticación (`ProtectedRoute` dejó de usarse en `AppRoutes.tsx`, aunque el archivo se conserva para cuando exista backend real). La plataforma no se presenta como "una página para crear cuentas".
+- `Navbar`, `Footer`, `Hero`, `Pricing` y `CTASection`: los llamados a la acción ya no apuntan a `/register`, sino directamente a `/app`. Login/registro/perfil quedan como personalización opcional, no como requisito.
+- `ProfilePage` degrada con gracia cuando no hay sesión personalizada, en vez de mostrar campos vacíos.
+- `PROJECT_ANALYSIS.md`, `ARCHITECTURE.md`, `ROADMAP.md` y `TODO.md` actualizados para reflejar el dashboard abierto y el asistente local.
+
 ## [0.2.0] — 2026-07-05
 
 ### Añadido

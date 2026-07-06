@@ -2,7 +2,6 @@ import { Route, Routes } from "react-router-dom";
 import { PublicLayout } from "@/layouts/PublicLayout";
 import { AuthLayout } from "@/layouts/AuthLayout";
 import { DashboardLayout } from "@/layouts/DashboardLayout";
-import { ProtectedRoute } from "@/routes/ProtectedRoute";
 
 import { HomePage } from "@/pages/landing/HomePage";
 import { LoginPage } from "@/pages/auth/LoginPage";
@@ -18,6 +17,7 @@ import { ReportsPage } from "@/pages/dashboard/ReportsPage";
 import { SettingsPage } from "@/pages/dashboard/SettingsPage";
 import { AdminPage } from "@/pages/dashboard/AdminPage";
 import { ProfilePage } from "@/pages/dashboard/ProfilePage";
+import { AssistantPage } from "@/pages/dashboard/AssistantPage";
 import { CatalogListPage } from "@/pages/catalog/CatalogListPage";
 
 import { NotFoundPage } from "@/pages/misc/NotFoundPage";
@@ -35,14 +35,12 @@ export function AppRoutes() {
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       </Route>
 
-      <Route
-        path="/app"
-        element={
-          <ProtectedRoute>
-            <DashboardLayout />
-          </ProtectedRoute>
-        }
-      >
+      {/*
+        Sin muro de login: /app es de acceso libre, no requiere autenticación.
+        ProtectedRoute (src/routes/ProtectedRoute.tsx) queda listo para cuando
+        exista backend real y se quiera exigir sesión.
+      */}
+      <Route path="/app" element={<DashboardLayout />}>
         <Route index element={<OverviewPage />} />
         <Route path="projects" element={<ProjectsListPage />} />
         <Route path="projects/:projectId" element={<ProjectDetailPage />} />
@@ -54,6 +52,7 @@ export function AppRoutes() {
         <Route path="settings" element={<SettingsPage />} />
         <Route path="admin" element={<AdminPage />} />
         <Route path="profile" element={<ProfilePage />} />
+        <Route path="asistente" element={<AssistantPage />} />
       </Route>
 
       <Route path="*" element={<NotFoundPage />} />

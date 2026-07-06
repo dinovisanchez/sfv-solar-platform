@@ -11,10 +11,14 @@ export function CTASection() {
         <div className="relative">
           <h2 className="font-serif-display text-3xl sm:text-4xl">Diseña tu primer proyecto en minutos</h2>
           <p className="mx-auto mt-3 max-w-xl text-white/85">
-            Crea una cuenta gratuita y prueba el dimensionador FV con tus propios datos de consumo.
+            Sin cuenta, sin tarjeta. Abre el dashboard y prueba el dimensionador FV con tus propios datos de
+            consumo.
           </p>
-          <Link to={ROUTES.register} className={`${buttonVariants("primary", "lg")} mt-7 bg-white text-slate-900 hover:bg-slate-100`}>
-            Crear cuenta gratis <ArrowRight className="h-4 w-4" />
+          <Link
+            to={ROUTES.app.overview}
+            className={`${buttonVariants("primary", "lg")} mt-7 bg-white text-slate-900 hover:bg-slate-100`}
+          >
+            Abrir el dashboard <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
       </div>

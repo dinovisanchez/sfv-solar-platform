@@ -20,15 +20,17 @@ Este roadmap prioriza: (1) consolidar y sanear la base actual, (2) construir el 
 
 No estaba en la versión anterior de este roadmap; se ejecutó como un salto explícito pedido por el usuario para tener una base de producto completa antes de profundizar en el motor de ingeniería. Incluyó:
 
-- [x] Routing completo (React Router 6): landing pública, auth, dashboard protegido.
+- [x] Routing completo (React Router 6): landing pública, auth, dashboard.
 - [x] Sistema de diseño nuevo con modo claro/oscuro, glassmorphism, gradientes y animaciones.
 - [x] Dashboard con proyectos, clientes, cotizaciones, catálogo, reportes, configuración, administrador.
 - [x] Arquitectura preparada para multitenant, roles, licencias/suscripciones, versionado y compartir proyectos (modelos e interfaces, sin backend real todavía — ver `ARCHITECTURE.md`).
 - [x] Repositorio genérico intercambiable `localStorage` ↔ API REST (`Repository<T>`).
 - [x] Interfaces listas (sin implementación real) para mapas, recurso solar y exportación PDF/Excel.
 - [x] `render.yaml` + README para despliegue en Render Free.
+- [x] **Dashboard de acceso libre**: se quitó el muro de login (`/app` ya no exige sesión) por decisión de producto — la plataforma no es "una página para crear cuentas", ver `ARCHITECTURE.md` §10.
+- [x] **Asistente IA local**: búsqueda sobre el Manual Maestro y la Guía Práctica, sin backend ni LLM externo, siempre cita la fuente (`src/services/assistant`, ver `ARCHITECTURE.md` §11). Disponible en `/app/asistente` y embebido en la landing.
 
-Esta fase adelanta parte de lo que antes era "Fase 4" (routing real, panel de proyecto) y parte de "Fase 5" (arquitectura multitenant, roles). Las secciones siguientes se ajustaron para no duplicar ese trabajo.
+Esta fase adelanta parte de lo que antes era "Fase 4" (routing real, panel de proyecto) y parte de "Fase 5" (arquitectura multitenant, roles) y de "Funcionalidades futuras" (asistente IA). Las secciones siguientes se ajustaron para no duplicar ese trabajo.
 
 ---
 
@@ -111,7 +113,7 @@ Objetivo: pasar de "app cliente-only" a plataforma real multiusuario, cubriendo 
 
 ## Funcionalidades futuras (post Fase 5)
 
-- **Asistente IA con RAG** sobre manuales oficiales de fabricantes y normativa cargada (Manual Maestro §13, punto 12 y §14 Fase 5): debe responder solo con base en documentos cargados y citar la fuente; prohibido inventar valores de ficha técnica. El botón "Let AI revisar" y el bloque "Asistente solar" ya presentes en la UI actual son placeholders visuales de esta funcionalidad futura — no conectarlos a un LLM genérico sin RAG y sin control de alucinación, dado el riesgo de seguridad eléctrica de una recomendación incorrecta.
+- ~~**Asistente IA con RAG** sobre manuales oficiales~~ — una primera versión ya existe (`src/services/assistant`, ver `ARCHITECTURE.md` §11): búsqueda local sobre el Manual Maestro y la Guía Práctica, sin LLM externo, siempre cita la sección de origen. Pendiente para el futuro: ampliar la base a fichas de fabricantes reales (no solo los dos manuales) y, si se conecta un LLM real, mantener la misma regla — responder solo con fuente citada y prohibir inventar valores de ficha técnica, dado el riesgo de seguridad eléctrica de una recomendación incorrecta.
 - **Revisor automático de diseños** vía IA, apoyado en el motor de reglas de Fase 2.
 - **Integración CAD** (exportación DXF/DWG) para planos.
 - **API pública** para integraciones de terceros, sobre el mismo contrato ya definido en `src/api/endpoints.ts`.

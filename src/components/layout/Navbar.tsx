@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { ArrowRight } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 import { buttonVariants } from "@/components/ui/Button";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
@@ -22,11 +23,8 @@ export function Navbar() {
 
       <div className="flex items-center gap-2">
         <ThemeToggle />
-        <Link to={ROUTES.login} className={buttonVariants("ghost", "sm")}>
-          Iniciar sesión
-        </Link>
-        <Link to={ROUTES.register} className={buttonVariants("primary", "sm")}>
-          Crear cuenta
+        <Link to={ROUTES.app.overview} className={buttonVariants("primary", "sm")}>
+          Abrir la plataforma <ArrowRight className="h-3.5 w-3.5" />
         </Link>
       </div>
     </header>

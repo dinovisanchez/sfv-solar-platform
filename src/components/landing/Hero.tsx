@@ -19,15 +19,15 @@ export function Hero() {
         </h1>
         <p className="mt-6 max-w-xl text-lg text-slate-600 dark:text-slate-300">{SITE.description}</p>
         <div className="mt-8 flex flex-wrap items-center gap-3">
-          <Link to={ROUTES.register} className={buttonVariants("primary", "lg")}>
-            Empezar gratis <ArrowRight className="h-4 w-4" />
+          <Link to={ROUTES.app.overview} className={buttonVariants("primary", "lg")}>
+            Abrir el dashboard <ArrowRight className="h-4 w-4" />
           </Link>
-          <Link to={ROUTES.login} className={buttonVariants("outline", "lg")}>
-            Ver demo del dashboard
-          </Link>
+          <a href="#asistente" className={buttonVariants("outline", "lg")}>
+            Preguntarle al asistente IA
+          </a>
         </div>
         <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">
-          Sin tarjeta de crédito. Diseñado para ingenieros e instaladores en Colombia.
+          Acceso libre, sin crear cuenta. Diseñado para ingenieros e instaladores en Colombia.
         </p>
       </div>
 

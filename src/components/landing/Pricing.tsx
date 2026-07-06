@@ -12,7 +12,8 @@ export function Pricing() {
       <div className="mx-auto max-w-2xl text-center">
         <h2 className="font-serif-display text-3xl sm:text-4xl">Planes para cada etapa</h2>
         <p className="mt-3 text-slate-600 dark:text-slate-300">
-          Empieza gratis y evoluciona hacia un equipo con múltiples proyectos y clientes.
+          Hoy toda la plataforma es de acceso libre. Estos planes muestran hacia dónde evoluciona cuando
+          exista facturación y equipos multiempresa.
         </p>
       </div>
 
@@ -39,10 +40,10 @@ export function Pricing() {
               ))}
             </ul>
             <Link
-              to={ROUTES.register}
+              to={ROUTES.app.overview}
               className={cn("mt-6 w-full", buttonVariants(plan.highlighted ? "primary" : "outline", "md"))}
             >
-              Empezar
+              Abrir el dashboard
             </Link>
           </Card>
         ))}

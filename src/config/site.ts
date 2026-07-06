@@ -9,6 +9,7 @@ export const SITE = {
 export const NAV_LINKS = [
   { label: "Producto", href: "#modulos" },
   { label: "Características", href: "#caracteristicas" },
+  { label: "Asistente IA", href: "#asistente" },
   { label: "Planes", href: "#planes" },
   { label: "Preguntas frecuentes", href: "#faq" }
 ];
@@ -110,5 +111,15 @@ export const FAQS = [
     question: "¿Van a integrar mapas y datos climáticos reales?",
     answer:
       "Sí. La arquitectura ya contempla proveedores de mapas (Google Maps, OpenStreetMap, Mapbox) y de recurso solar (NASA POWER, PVGIS, Open-Meteo), listos para conectarse."
+  },
+  {
+    question: "¿El asistente IA usa un modelo de lenguaje externo?",
+    answer:
+      "No todavía. Hoy busca directamente en el Manual Maestro y la Guía Práctica cargados en el repositorio y responde citando la sección exacta — así evita inventar normativa o valores de ficha técnica. Un LLM conectado a esta misma base (RAG) es un paso futuro, no un reemplazo de la fuente."
+  },
+  {
+    question: "¿Necesito crear una cuenta para usar la plataforma?",
+    answer:
+      "No. El dashboard es de acceso libre: puedes crear proyectos, dimensionar y usar el asistente sin registrarte. Personalizar una sesión (nombre, rol) es opcional, solo para cuando quieras que aparezca en tus reportes."
   }
 ] as const;

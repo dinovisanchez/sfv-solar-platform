@@ -23,6 +23,8 @@ Pendientes concretos tras la migración a plataforma SaaS. Ordenados por área, 
 - [ ] Conectar un `SolarResourceProvider` real (`src/services/simulation/weatherProvider.ts`) — NASA POWER, PVGIS u Open-Meteo.
 - [ ] Implementar `pdfExporter` (`src/services/export/pdfExporter.ts`) con una librería real (ej. `@react-pdf/renderer` o `pdf-lib`).
 - [ ] Implementar `excelExporter` (`src/services/export/excelExporter.ts`) con una librería real (ej. `exceljs`).
+- [ ] Ampliar la base del asistente (`src/services/assistant/knowledgeBase.ts`) más allá de los dos manuales — fichas de fabricantes reales, normativa adicional.
+- [ ] Evaluar conectar un LLM real (vía backend, nunca con la llave expuesta en el navegador) que use la misma base como contexto (RAG), manteniendo la regla de citar fuente y no inventar valores de ficha técnica.
 
 ## Catálogo
 

@@ -40,7 +40,8 @@ src/
 │   ├── layout/         Navbar, Footer, Sidebar, Topbar
 │   ├── landing/        Hero, Features, Modules, Screenshots, Pricing, FAQ, CTASection
 │   ├── dashboard/       DashboardPage (wrapper), TaskCard (heredado del MVP, adaptado a dark mode)
-│   └── engineering/     NumberSliderField, MapPreviewPlaceholder
+│   ├── engineering/     NumberSliderField, MapPreviewPlaceholder
+│   └── assistant/       AssistantChat.tsx (chat reutilizable, landing + dashboard)
 ├── config/            site.ts (contenido de landing/nav/planes/FAQ), env.ts
 ├── constants/          routes.ts, navigation.ts
 ├── context/            ThemeContext, AuthContext
@@ -52,7 +53,7 @@ src/
 │   ├── landing/HomePage.tsx
 │   ├── auth/            LoginPage, RegisterPage, ForgotPasswordPage
 │   ├── dashboard/        OverviewPage, ProjectsListPage, ProjectDetailPage, ClientsPage, QuotesPage,
-│   │                     ReportsPage, SettingsPage, AdminPage, ProfilePage
+│   │                     ReportsPage, SettingsPage, AdminPage, ProfilePage, AssistantPage
 │   │   └── project/       GeneralTab, DimensioningTab, ProductionTab, ElectricalTab, FinancialTab,
 │   │                       BOMTab, DiagramsTab, ReportsTab
 │   ├── catalog/CatalogListPage.tsx (genérico, parametrizado por categoría)
@@ -65,7 +66,9 @@ src/
 │   ├── catalog/           categories.ts, mockData.ts
 │   ├── export/            pdfExporter.ts, excelExporter.ts (interfaz lista, implementación pendiente)
 │   ├── maps/               mapProvider.ts (Google/OSM/Mapbox, interfaz lista, pendiente)
-│   └── simulation/         weatherProvider.ts (NASA POWER/PVGIS/Open-Meteo, interfaz lista, pendiente)
+│   ├── simulation/         weatherProvider.ts (NASA POWER/PVGIS/Open-Meteo, interfaz lista, pendiente)
+│   └── assistant/          knowledgeBase.ts, search.ts, formatAnswer.ts — asistente local sobre los
+│                            manuales del repo (?raw + búsqueda por palabras clave, sin backend)
 ├── styles/globals.css     Tailwind + tokens de tema claro/oscuro + glassmorphism + animaciones
 ├── types/common.ts        Id, Timestamps, Paginated<T>, ApiResult<T>, SelectOption
 └── utils/                 cn.ts, formatters.ts
@@ -75,16 +78,16 @@ src/
 
 - **React 18 + TypeScript 5.8 (strict)** — sin cambios respecto al MVP original.
 - **Vite 7** con alias `@/` → `src/` (vía `vite.config.ts` + `tsconfig.json`).
-- **React Router 6** — rutas públicas, de autenticación y protegidas (`/app/*`).
+- **React Router 6** — rutas públicas, de autenticación (opcional) y de dashboard (`/app/*`, acceso libre).
 - **Tailwind CSS 3** con `darkMode: "class"`, paleta de marca (`brand`, `solar`), gradientes y animaciones propias.
 - **clsx** para composición condicional de clases (`src/utils/cn.ts`).
 - **lucide-react** para iconografía.
-- Sin dependencias de servicios de terceros con datos reales todavía (mapas, clima, PDF/Excel son interfaces sin implementar).
+- Sin dependencias de servicios de terceros con datos reales todavía (mapas, clima, PDF/Excel son interfaces sin implementar). El asistente IA es la excepción: es una funcionalidad real hoy, pero local (búsqueda sobre los manuales embebidos en el bundle vía `?raw`), sin llamar a ningún servicio externo.
 
 ## 5. Flujo de funcionamiento
 
 ```
-Visitante → Landing (/) → Registro/Login (mock local) → /app (protegido)
+Visitante → Landing (/) → "Abrir la plataforma" → /app (sin login, acceso libre)
   → Overview: métricas agregadas de proyectos/clientes/cotizaciones (localStorage)
   → Proyectos: crear/listar → Detalle de proyecto con tabs
       General (cliente, ubicación, coordenadas, empresa, fecha, estado)
@@ -93,16 +96,19 @@ Visitante → Landing (/) → Registro/Login (mock local) → /app (protegido)
       Financiero (VPN/TIR/payback/ROI reales)
       BOM / Diagramas (estructura lista, generación pendiente)
       Reportes (botones de exportación PDF/Excel que exponen el contrato, implementación pendiente)
+  → Asistente IA: preguntas libres respondidas solo con el Manual Maestro y la Guía Práctica (sin LLM externo)
   → Clientes, Cotizaciones, Catálogo, Reportes, Configuración, Administrador
+  → (Opcional) Login/Registro/Perfil: personalizar nombre y rol de la sesión local, no es requisito
 ```
 
 ## 6. Estado actual
 
 | Aspecto | Estado |
 |---|---|
-| Routing | Completo: landing pública, auth, dashboard protegido |
+| Routing | Completo: landing pública, auth opcional, dashboard de acceso libre |
 | Dark/Light mode | Completo, persistente en `localStorage`, respeta preferencia del sistema al primer uso |
-| Autenticación | Mock local (sin backend); arquitectura de roles y protección de rutas ya en su lugar |
+| Autenticación | Mock local, opcional (no bloquea el dashboard); arquitectura de roles lista para cuando exista backend |
+| Asistente IA | Funcional: búsqueda local sobre el Manual Maestro y la Guía Práctica, sin LLM externo ni backend, siempre cita la fuente |
 | Persistencia | `localStorage` detrás de `Repository<T>`, swappable a REST sin tocar páginas |
 | Dimensionamiento FV | Funcional, reutiliza el motor original |
 | Financiero (VPN/TIR/ROI/payback) | Funcional, fórmulas reales implementadas |
