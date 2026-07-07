@@ -58,6 +58,16 @@ Pedido explícito del usuario: quitar del producto las secciones de gestión tip
 
 Ver `ARCHITECTURE.md` §5 y §7 para el detalle técnico y la lista completa de lo retirado.
 
+## Fase 0.8: Vista 3D enriquecida, diagrama unifilar y flujo de instalación — ✅ Completada (2026-07-07)
+
+Pedido explícito del usuario tras probar la vista 3D: mostrar en las etiquetas el nombre del equipo y cuánto puede producir/almacenar, agregar el plano unifilar de todo lo recomendado, y un diagrama del flujo de instalación.
+
+- [x] **Etiquetas 3D enriquecidas**: cada marcador (`ArraySceneViewer`) ahora muestra el modelo real y su dato clave — el arreglo muestra kWp + producción mensual estimada, el inversor su potencia AC y relación DC/AC, la batería su capacidad útil total, el transformador su capacidad en kVA.
+- [x] **Diagrama unifilar** (`SingleLineDiagram.tsx`): topología Arreglo FV → Protecciones DC → Inversor → Protecciones AC → (Transformador) → Red/Medidor, con la Batería como rama del inversor, todo con los modelos reales de la recomendación.
+- [x] **Flujo de instalación** (`installationFlow.ts` + `InstallationFlowDiagram.tsx`): secuencia de pasos numerada que varía según si hay batería, transformador, y si la superficie es techo o patio.
+
+Ver `ARCHITECTURE.md` §5 para el detalle técnico.
+
 ---
 
 ## Fase 1: Base técnica y modelo de datos

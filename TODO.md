@@ -7,7 +7,7 @@ Pendientes concretos del estado actual (herramienta de simulación enfocada, sin
 - [ ] Diseño eléctrico detallado: strings, protecciones DC/AC, cableado, caída de tensión (hoy Simulación no lo calcula, solo lista "elementos de la instalación" de forma descriptiva).
 - [ ] Validación de tensión (Voc corregido por temperatura vs. rango MPPT del inversor) — `services/simulation/recommend.ts` hoy solo valida relación DC/AC y fases.
 - [ ] BOM con cantidades y alternativas compatibles, no solo la lista de texto actual.
-- [ ] Diagrama unifilar (eléctrico, no el plano físico que ya existe).
+- [x] ~~Diagrama unifilar~~ — hecho (`SingleLineDiagram.tsx`), aunque es solo topología: no calcula calibres de conductor ni corrientes de cortocircuito reales.
 
 ## Integraciones externas
 
@@ -29,7 +29,8 @@ Pendientes concretos del estado actual (herramienta de simulación enfocada, sin
 - [ ] `SystemLayoutDiagram`/`ArraySceneViewer` no consideran obstáculos, sombras ni el contorno real del techo — hoy es un rectángulo. El techo/patio real casi nunca es rectangular.
 - [ ] La vista 3D no simula la posición del sol ni sombras proyectadas; es una representación esquemática de disposición y orientación, no un análisis de sombreado.
 - [ ] Guardar/compartir el resultado de una simulación (hoy se pierde al recargar la página — no hay "proyectos guardados" desde que se retiró esa capa, ver `ARCHITECTURE.md` §7). Si se quiere recuperar esta función, empezar por `localStorage` simple antes de reintroducir un modelo multitenant completo.
-- [ ] Pruebas unitarias para `battery.ts`, `layout.ts` y `recommend.ts` (mismo criterio que el resto de `services/calculations`).
+- [ ] Pruebas unitarias para `battery.ts`, `layout.ts`, `recommend.ts` e `installationFlow.ts` (mismo criterio que el resto de `services/calculations`).
+- [ ] `SingleLineDiagram` es esquemático (topología, no cálculo eléctrico); `InstallationFlowDiagram` es una secuencia de referencia, no un checklist interactivo con evidencia (fotos, mediciones) como se planeó en el Manual Maestro §13 para una fase posterior.
 
 ## Calidad y tooling
 

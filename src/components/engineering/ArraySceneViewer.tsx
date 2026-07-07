@@ -2,21 +2,43 @@ import { Canvas } from "@react-three/fiber";
 import { Html, OrbitControls } from "@react-three/drei";
 import type { ArrayLayoutResult } from "@/services/simulation/layout";
 
+export type EquipmentInfo = {
+  label: string;
+  detail: string;
+  color: string;
+};
+
 type ArraySceneViewerProps = {
   layout: ArrayLayoutResult;
   tiltDegrees: number;
   azimuthDegrees: number;
   surface: "techo" | "patio";
-  hasBattery: boolean;
-  hasTransformer: boolean;
+  arrayInfo: EquipmentInfo;
+  inverterInfo: EquipmentInfo;
+  batteryInfo?: EquipmentInfo;
+  transformerInfo?: EquipmentInfo;
 };
 
 function degToRad(deg: number) {
   return (deg * Math.PI) / 180;
 }
 
-function PanelArray({ layout, tiltDegrees, azimuthDegrees }: Pick<ArraySceneViewerProps, "layout" | "tiltDegrees" | "azimuthDegrees">) {
-  const { areaWidthM, areaHeightM, cols, panelWidthM, panelHeightM, marginM, gapM, panelsPlaced } = layout;
+function EquipmentLabel({ info }: { info: EquipmentInfo }) {
+  return (
+    <span className="pointer-events-none flex select-none flex-col items-center whitespace-nowrap rounded-xl bg-slate-900/85 px-2.5 py-1 text-center leading-tight text-white">
+      <span className="text-[10px] font-semibold">{info.label}</span>
+      <span className="text-[9px] text-white/80">{info.detail}</span>
+    </span>
+  );
+}
+
+function PanelArray({
+  layout,
+  tiltDegrees,
+  azimuthDegrees,
+  arrayInfo
+}: Pick<ArraySceneViewerProps, "layout" | "tiltDegrees" | "azimuthDegrees" | "arrayInfo">) {
+  const { areaWidthM, areaHeightM, cols, rows, panelWidthM, panelHeightM, marginM, gapM, panelsPlaced } = layout;
   const tiltRad = degToRad(tiltDegrees);
   const azimuthRad = degToRad(azimuthDegrees - 180);
 
@@ -33,6 +55,8 @@ function PanelArray({ layout, tiltDegrees, azimuthDegrees }: Pick<ArraySceneView
   });
 
   const liftM = (panelHeightM / 2) * Math.sin(tiltRad) + 0.02;
+  const arrayHeightM = rows * (panelHeightM + gapM);
+  const arrayCenterZ = originZ + arrayHeightM / 2;
 
   return (
     <group rotation={[0, azimuthRad, 0]}>
@@ -42,21 +66,22 @@ function PanelArray({ layout, tiltDegrees, azimuthDegrees }: Pick<ArraySceneView
           <meshStandardMaterial color="#1d4ed8" metalness={0.35} roughness={0.35} />
         </mesh>
       ))}
+      <Html position={[0, liftM + 0.6, arrayCenterZ]} center distanceFactor={8} occlude>
+        <EquipmentLabel info={arrayInfo} />
+      </Html>
     </group>
   );
 }
 
-function EquipmentMarker({ position, color, label }: { position: [number, number, number]; color: string; label: string }) {
+function EquipmentMarker({ position, info }: { position: [number, number, number]; info: EquipmentInfo }) {
   return (
     <group position={position}>
       <mesh castShadow>
         <boxGeometry args={[0.4, 0.4, 0.4]} />
-        <meshStandardMaterial color={color} />
+        <meshStandardMaterial color={info.color} />
       </mesh>
-      <Html position={[0, 0.4, 0]} center distanceFactor={8} occlude>
-        <span className="pointer-events-none select-none whitespace-nowrap rounded-full bg-slate-900/85 px-2 py-0.5 text-[10px] font-medium text-white">
-          {label}
-        </span>
+      <Html position={[0, 0.5, 0]} center distanceFactor={8} occlude>
+        <EquipmentLabel info={info} />
       </Html>
     </group>
   );
@@ -67,14 +92,16 @@ export function ArraySceneViewer({
   tiltDegrees,
   azimuthDegrees,
   surface,
-  hasBattery,
-  hasTransformer
+  arrayInfo,
+  inverterInfo,
+  batteryInfo,
+  transformerInfo
 }: ArraySceneViewerProps) {
-  const markers: { label: string; color: string }[] = [{ label: "Inversor", color: "#0f172a" }];
-  if (hasBattery) markers.push({ label: "Batería", color: "#16a34a" });
-  if (hasTransformer) markers.push({ label: "Transformador", color: "#d97706" });
+  const markers: EquipmentInfo[] = [inverterInfo];
+  if (batteryInfo) markers.push(batteryInfo);
+  if (transformerInfo) markers.push(transformerInfo);
 
-  const spacing = 0.9;
+  const spacing = 1.1;
   const startX = -((markers.length - 1) * spacing) / 2;
   const cameraDistance = Math.max(layout.areaWidthM, layout.areaHeightM, 4);
 
@@ -89,14 +116,13 @@ export function ArraySceneViewer({
           <meshStandardMaterial color={surface === "techo" ? "#94a3b8" : "#a8a29e"} />
         </mesh>
 
-        <PanelArray layout={layout} tiltDegrees={tiltDegrees} azimuthDegrees={azimuthDegrees} />
+        <PanelArray layout={layout} tiltDegrees={tiltDegrees} azimuthDegrees={azimuthDegrees} arrayInfo={arrayInfo} />
 
         {markers.map((marker, index) => (
           <EquipmentMarker
             key={marker.label}
             position={[startX + index * spacing, 0.2, layout.areaHeightM / 2 + 0.6]}
-            color={marker.color}
-            label={marker.label}
+            info={marker}
           />
         ))}
 

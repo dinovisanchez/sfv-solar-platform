@@ -2,6 +2,18 @@
 
 Formato libre, en español, orientado a decisiones de producto/arquitectura más que a commits individuales.
 
+## [0.6.0] — 2026-07-07
+
+### Añadido
+
+- **Etiquetas 3D enriquecidas**: `ArraySceneViewer` ahora recibe un `EquipmentInfo { label, detail, color }` por equipo en vez de un booleano — cada marcador muestra el modelo real y su dato clave (arreglo: kWp + producción mensual; inversor: kW AC + relación DC/AC; batería: kWh útiles totales; transformador: kVA).
+- **Diagrama unifilar** (`SingleLineDiagram.tsx`): topología Arreglo FV → Protecciones DC → Inversor → Protecciones AC → (Transformador) → Red/Medidor, con la Batería como rama del inversor, usando los modelos reales de la recomendación.
+- **Flujo de instalación** (`services/simulation/installationFlow.ts` + `InstallationFlowDiagram.tsx`): línea de tiempo numerada de pasos de instalación, adaptada según si hay batería, transformador, y si la superficie es techo o patio.
+
+### Cambiado
+
+- `PROJECT_ANALYSIS.md`, `ARCHITECTURE.md`, `ROADMAP.md` y `TODO.md` actualizados con el detalle de estas dos nuevas piezas.
+
 ## [0.5.0] — 2026-07-07
 
 ### Eliminado (pivote: SaaS multiempresa → herramienta de simulación enfocada)

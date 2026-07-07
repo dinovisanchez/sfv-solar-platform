@@ -38,7 +38,8 @@ src/
 │   ├── layout/         Navbar, Footer, Sidebar, Topbar
 │   ├── landing/        Hero, Features, Modules, AssistantSection, Screenshots, Pricing, FAQ, CTASection
 │   ├── dashboard/       DashboardPage (wrapper), TaskCard (heredado del MVP, adaptado a dark mode)
-│   ├── engineering/     NumberSliderField, SystemLayoutDiagram (plano SVG 2D), ArraySceneViewer (vista 3D con Three.js)
+│   ├── engineering/     NumberSliderField, SystemLayoutDiagram (plano SVG 2D), ArraySceneViewer (vista 3D con Three.js),
+│   │                     SingleLineDiagram (unifilar SVG), InstallationFlowDiagram (línea de tiempo de instalación)
 │   └── assistant/       AssistantChat.tsx (chat reutilizable, landing + dashboard)
 ├── config/            site.ts (contenido de landing/nav/planes/FAQ), env.ts
 ├── constants/          routes.ts, navigation.ts
@@ -61,7 +62,8 @@ src/
 │   ├── maps/               mapProvider.ts (Google/OSM/Mapbox, interfaz lista, pendiente)
 │   ├── simulation/         weatherProvider.ts (pendiente), hspByCity.ts (referencia aproximada),
 │   │                       layout.ts (paneles que caben en un área), recommend.ts (elige panel/inversor/
-│   │                       batería/transformador del catálogo y arma el porqué)
+│   │                       batería/transformador del catálogo y arma el porqué), installationFlow.ts
+│   │                       (secuencia de pasos de instalación según batería/transformador/superficie)
 │   └── assistant/          knowledgeBase.ts, search.ts, formatAnswer.ts — asistente local sobre los manuales
 ├── styles/globals.css     Tailwind + tokens de tema claro/oscuro + glassmorphism + animaciones
 ├── types/common.ts        Id, Timestamps, Paginated<T>, ApiResult<T>, SelectOption
@@ -89,8 +91,10 @@ Visitante → Landing (/) → "Abrir la plataforma" → /app (sin login, acceso 
       → Techo o patio: ancho, largo, inclinación, orientación/azimut
       → Resultado en vivo: kWp y paneles, inversor recomendado (con motivo), batería recomendada
         (con motivo), transformador recomendado (con motivo), lista de elementos de la instalación,
-        plano 2D a escala (con aviso si no caben todos los paneles) y vista 3D interactiva con
-        marcadores de inversor/batería/transformador
+        diagrama unifilar (arreglo → protecciones DC → inversor → protecciones AC → transformador →
+        red, batería como rama), flujo de instalación paso a paso, plano 2D a escala (con aviso si no
+        caben todos los paneles) y vista 3D interactiva con marcadores etiquetados (modelo + producción/
+        potencia/capacidad) de inversor/batería/transformador
   → Asistente IA: preguntas libres respondidas solo con el Manual Maestro y la Guía Práctica (sin LLM externo)
   → Catálogo: paneles, inversores, baterías, transformadores, controladores, DPS, breakers, fusibles,
     conductores, estructuras
@@ -105,10 +109,12 @@ Visitante → Landing (/) → "Abrir la plataforma" → /app (sin login, acceso 
 | Routing | Completo: landing pública, auth opcional, dashboard de acceso libre (5 secciones) |
 | Dark/Light mode | Completo, persistente en `localStorage` |
 | Autenticación | Mock local, opcional, no bloquea nada |
-| Simulación | Funcional de punta a punta: dimensionamiento, inversor/batería/transformador reales del catálogo con motivo, lista de elementos de instalación, plano 2D y vista 3D |
+| Simulación | Funcional de punta a punta: dimensionamiento, inversor/batería/transformador reales del catálogo con motivo, lista de elementos de instalación, diagrama unifilar, flujo de instalación, plano 2D y vista 3D con etiquetas de producción/capacidad |
 | Asistente IA | Funcional: búsqueda local sobre el Manual Maestro y la Guía Práctica, siempre cita la fuente |
 | Catálogo de equipos | Funcional, ampliado: 6 paneles, 7 inversores, 5 baterías, 6 transformadores y variedad de protecciones/conductores/estructuras |
-| Vista 3D | Funcional: paneles inclinados/orientados según los parámetros, marcadores de inversor/batería/transformador, cámara orbital. Es una representación esquemática (no simula sombras solares reales ni una línea de tiempo de construcción) |
+| Vista 3D | Funcional: paneles inclinados/orientados según los parámetros, marcadores etiquetados (modelo + dato clave) de inversor/batería/transformador, cámara orbital. Es una representación esquemática (no simula sombras solares reales ni una línea de tiempo de construcción) |
+| Diagrama unifilar | Funcional: topología arreglo → protecciones DC → inversor → protecciones AC → (transformador) → red, con batería como rama, usando los modelos reales recomendados |
+| Flujo de instalación | Funcional: secuencia de pasos generada según si hay batería/transformador y el tipo de superficie |
 | Mapas / recurso solar / export PDF-Excel | Interfaces y stubs listos; sin proveedor real conectado |
 | Despliegue | `render.yaml` + README listos para Render Free (Static Site) |
 | Tests / CI | Siguen sin existir (ver `TODO.md`) |

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { AlertTriangle, BatteryCharging, Home, PanelTop, PlugZap, Ruler, Zap } from "lucide-react";
+import { AlertTriangle, BatteryCharging, Home, PanelTop, PlugZap, Ruler, Waypoints, Zap } from "lucide-react";
 import { DashboardPage } from "@/components/dashboard/DashboardPage";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
@@ -8,6 +8,8 @@ import { StatCard } from "@/components/ui/StatCard";
 import { Badge } from "@/components/ui/Badge";
 import { SystemLayoutDiagram } from "@/components/engineering/SystemLayoutDiagram";
 import { ArraySceneViewer } from "@/components/engineering/ArraySceneViewer";
+import { SingleLineDiagram } from "@/components/engineering/SingleLineDiagram";
+import { InstallationFlowDiagram } from "@/components/engineering/InstallationFlowDiagram";
 import { calculateDimensioning } from "@/services/calculations/dimensioning";
 import { BATTERY_CHEMISTRY_DEFAULTS, calculateBatterySizing } from "@/services/calculations/battery";
 import {
@@ -17,7 +19,9 @@ import {
   recommendTransformer
 } from "@/services/simulation/recommend";
 import { calculateArrayLayout } from "@/services/simulation/layout";
+import { buildInstallationFlow } from "@/services/simulation/installationFlow";
 import { HSP_BY_CITY, getHspForCity } from "@/services/simulation/hspByCity";
+import { formatKwh, formatKwp } from "@/utils/formatters";
 import { CATALOG_DATA } from "@/services/catalog/mockData";
 import type { PVModule } from "@/models/catalog";
 import type { GridType } from "@/models/electrical";
@@ -122,6 +126,39 @@ export function SimulationPage() {
     [areaWidthM, areaHeightM, panel, dimensioning.panelCount]
   );
 
+  const sceneEquipmentInfo = useMemo(() => {
+    const arrayInfo = {
+      label: `${dimensioning.panelCount}× ${panel.model}`,
+      detail: `${formatKwp(dimensioning.realDcKwp)} · ${formatKwh(dimensioning.estimatedMonthlyKwh)}/mes`,
+      color: "#1d4ed8"
+    };
+    const inverterInfo = inverterRecommendation
+      ? {
+          label: inverterRecommendation.inverter.model,
+          detail: `${inverterRecommendation.inverter.acPowerKw} kW AC · DC/AC ${inverterRecommendation.dcAcRatio.toFixed(2)}`,
+          color: "#0f172a"
+        }
+      : { label: "Inversor", detail: "Sin catálogo compatible", color: "#0f172a" };
+    const batteryInfo =
+      needsBattery && batteryRecommendation
+        ? {
+            label: `${batteryRecommendation.unitsNeeded}× ${batteryRecommendation.battery.model}`,
+            detail: `${formatKwh(batteryRecommendation.totalUsableCapacityKwh)} útiles`,
+            color: "#16a34a"
+          }
+        : undefined;
+    const transformerInfo =
+      needsTransformer && transformerRecommendation
+        ? {
+            label: transformerRecommendation.transformer.model,
+            detail: `${transformerRecommendation.transformer.ratedPowerKva} kVA`,
+            color: "#d97706"
+          }
+        : undefined;
+
+    return { arrayInfo, inverterInfo, batteryInfo, transformerInfo };
+  }, [dimensioning, panel, inverterRecommendation, needsBattery, batteryRecommendation, needsTransformer, transformerRecommendation]);
+
   const installationElements = useMemo(() => {
     const items = [
       `${dimensioning.panelCount} panel(es) ${panel.manufacturer} ${panel.model} de ${panel.powerWatts} W`,
@@ -160,6 +197,16 @@ export function SimulationPage() {
     needsTransformer,
     transformerRecommendation
   ]);
+
+  const installationSteps = useMemo(
+    () =>
+      buildInstallationFlow({
+        surface,
+        hasBattery: needsBattery && Boolean(batteryRecommendation),
+        hasTransformer: needsTransformer && Boolean(transformerRecommendation)
+      }),
+    [surface, needsBattery, batteryRecommendation, needsTransformer, transformerRecommendation]
+  );
 
   return (
     <DashboardPage title="Simulación">
@@ -455,6 +502,51 @@ export function SimulationPage() {
 
           <Card>
             <CardHeader>
+              <div className="flex items-center gap-3">
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 dark:bg-white/10">
+                  <Waypoints className="h-4 w-4" />
+                </span>
+                <p className="font-semibold">Diagrama unifilar</p>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <SingleLineDiagram
+                arrayLabel={`${dimensioning.panelCount}× ${panel.model}`}
+                arraySubtitle={formatKwp(dimensioning.realDcKwp)}
+                inverterLabel={inverterRecommendation?.inverter.model ?? "Sin catálogo compatible"}
+                inverterSubtitle={inverterRecommendation ? `${inverterRecommendation.inverter.acPowerKw} kW AC` : ""}
+                gridType={gridType}
+                batteryLabel={
+                  needsBattery && batteryRecommendation
+                    ? `${batteryRecommendation.unitsNeeded}× ${batteryRecommendation.battery.model}`
+                    : undefined
+                }
+                batterySubtitle={
+                  needsBattery && batteryRecommendation ? formatKwh(batteryRecommendation.totalUsableCapacityKwh) : undefined
+                }
+                transformerLabel={
+                  needsTransformer && transformerRecommendation ? transformerRecommendation.transformer.model : undefined
+                }
+                transformerSubtitle={
+                  needsTransformer && transformerRecommendation
+                    ? `${transformerRecommendation.transformer.ratedPowerKva} kVA`
+                    : undefined
+                }
+              />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <p className="font-semibold">Flujo de instalación</p>
+            </CardHeader>
+            <CardContent>
+              <InstallationFlowDiagram steps={installationSteps} />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
               <p className="font-semibold">Plano de distribución ({surface === "techo" ? "cubierta" : "patio"})</p>
               <Badge tone={layout.fits ? "success" : "warning"}>
                 {layout.panelsPlaced}/{dimensioning.panelCount} paneles ubicados
@@ -491,8 +583,10 @@ export function SimulationPage() {
                 tiltDegrees={tiltDegrees}
                 azimuthDegrees={azimuthDegrees}
                 surface={surface}
-                hasBattery={needsBattery && Boolean(batteryRecommendation)}
-                hasTransformer={needsTransformer && Boolean(transformerRecommendation)}
+                arrayInfo={sceneEquipmentInfo.arrayInfo}
+                inverterInfo={sceneEquipmentInfo.inverterInfo}
+                batteryInfo={sceneEquipmentInfo.batteryInfo}
+                transformerInfo={sceneEquipmentInfo.transformerInfo}
               />
               <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
                 Arrastra para rotar y usa la rueda del mouse para acercar. Los paneles se muestran inclinados
