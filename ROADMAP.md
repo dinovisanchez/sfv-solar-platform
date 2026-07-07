@@ -68,6 +68,17 @@ Pedido explícito del usuario tras probar la vista 3D: mostrar en las etiquetas 
 
 Ver `ARCHITECTURE.md` §5 para el detalle técnico.
 
+## Fase 0.9: Configuración de strings (serie/paralelo) y recomendación de medición — ✅ Completada (2026-07-07)
+
+Pedido explícito del usuario: que la simulación aconseje si los paneles van en serie o en paralelo hacia el inversor y la batería, y qué tipo de medición (directa/semidirecta/indirecta) y medidor corresponde, con la conexión explicada.
+
+- [x] **`recommendStringConfiguration()`**: paneles en serie por string a partir del Voc corregido por la temperatura mínima del sitio (nuevo input en Simulación) contra la tensión máxima DC del inversor, validado contra el rango MPPT (Vmp del string) y la corriente máxima por entrada MPPT (Isc con margen de seguridad). Strings en paralelo para completar el total de paneles requerido. Si algo no cumple, lo marca explícitamente en vez de sugerir una configuración inválida.
+- [x] **`recommendMetering()`**: tipo de medición (directa/semidirecta/indirecta) a partir de la corriente AC estimada y si hay transformador, con medidor bidireccional recomendado — regla general de referencia, no un reemplazo del esquema exigido por el operador de red.
+- [x] Batería: la recomendación ahora explica explícitamente que las unidades se conectan **en paralelo** (mismo bus DC), no en serie.
+- [x] Diagrama unifilar y vista 3D actualizados para reflejar la configuración de strings y el tipo de medidor en vez de texto genérico.
+
+Ver `ARCHITECTURE.md` §5 para el detalle técnico.
+
 ---
 
 ## Fase 1: Base técnica y modelo de datos

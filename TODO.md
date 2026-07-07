@@ -4,10 +4,11 @@ Pendientes concretos del estado actual (herramienta de simulación enfocada, sin
 
 ## Motor de ingeniería
 
-- [ ] Diseño eléctrico detallado: strings, protecciones DC/AC, cableado, caída de tensión (hoy Simulación no lo calcula, solo lista "elementos de la instalación" de forma descriptiva).
-- [ ] Validación de tensión (Voc corregido por temperatura vs. rango MPPT del inversor) — `services/simulation/recommend.ts` hoy solo valida relación DC/AC y fases.
+- [x] ~~Validación de tensión (Voc corregido por temperatura vs. rango MPPT del inversor)~~ — hecho (`recommendStringConfiguration()`), incluye paneles en serie por string y strings en paralelo con validación de corriente por MPPT.
+- [ ] Diseño eléctrico detallado: calibre de conductor DC/AC y caída de tensión real (hoy Simulación no lo calcula; sí calcula strings, protecciones y medición a nivel de topología).
 - [ ] BOM con cantidades y alternativas compatibles, no solo la lista de texto actual.
 - [x] ~~Diagrama unifilar~~ — hecho (`SingleLineDiagram.tsx`), aunque es solo topología: no calcula calibres de conductor ni corrientes de cortocircuito reales.
+- [ ] `recommendMetering()` usa un umbral fijo (60 A) y una tensión de referencia fija (220 V) para decidir directa/semidirecta/indirecta — reemplazar por las reglas reales del operador de red cuando se conecte un backend normativo.
 
 ## Integraciones externas
 

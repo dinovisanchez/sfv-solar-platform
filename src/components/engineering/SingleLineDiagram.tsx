@@ -17,6 +17,8 @@ type SingleLineDiagramProps = {
   batterySubtitle?: string;
   transformerLabel?: string;
   transformerSubtitle?: string;
+  meteringLabel?: string;
+  meteringSubtitle?: string;
 };
 
 const BOX_W = 140;
@@ -66,7 +68,9 @@ export function SingleLineDiagram({
   batteryLabel,
   batterySubtitle,
   transformerLabel,
-  transformerSubtitle
+  transformerSubtitle,
+  meteringLabel,
+  meteringSubtitle
 }: SingleLineDiagramProps) {
   const gridLabel = gridType === "trifasica" ? "Red trifásica" : gridType === "bifasica" ? "Red bifásica" : "Red monofásica";
 
@@ -79,7 +83,12 @@ export function SingleLineDiagram({
   if (transformerLabel) {
     nodes.push({ title: "Transformador", modelLabel: transformerLabel, detail: transformerSubtitle ?? "", accent: "#d97706" });
   }
-  nodes.push({ title: gridLabel, modelLabel: "Punto de conexión", detail: "Medidor bidireccional", accent: "#475569" });
+  nodes.push({
+    title: gridLabel,
+    modelLabel: meteringLabel ?? "Punto de conexión",
+    detail: meteringSubtitle ?? "Medidor bidireccional",
+    accent: "#475569"
+  });
 
   const mainY = PADDING;
   const width = nodes.length * BOX_W + (nodes.length - 1) * GAP_X + PADDING * 2;

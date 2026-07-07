@@ -2,6 +2,21 @@
 
 Formato libre, en español, orientado a decisiones de producto/arquitectura más que a commits individuales.
 
+## [0.7.0] — 2026-07-07
+
+### Añadido
+
+- **Configuración de strings** (`recommendStringConfiguration()`): responde explícitamente si los paneles van en serie o en paralelo. Calcula paneles en serie por string (Voc corregido por la temperatura mínima del sitio vs. tensión máxima DC del inversor, Vmp dentro del rango MPPT) y strings en paralelo (corriente combinada por entrada MPPT vs. máximo admitido), marcando explícitamente cuando algo no cumple en vez de sugerir una configuración inválida.
+- **Recomendación de medición** (`recommendMetering()`): tipo de medición (directa/semidirecta/indirecta) según la corriente AC estimada y si hay transformador, con medidor bidireccional recomendado.
+- Nuevo input "Temperatura mínima del sitio (°C)" en Simulación, usado para la corrección de Voc.
+- Nuevas tarjetas en Simulación: "Conexión de paneles: serie y paralelo" y "Medición y punto de conexión".
+- La recomendación de batería ahora explica que las unidades se conectan en paralelo (mismo bus DC), no en serie.
+- El diagrama unifilar y la vista 3D reflejan la configuración de strings y el tipo de medidor recomendado en vez de texto genérico.
+
+### Cambiado
+
+- `PROJECT_ANALYSIS.md`, `ARCHITECTURE.md`, `ROADMAP.md` y `TODO.md` actualizados con el detalle.
+
 ## [0.6.1] — 2026-07-07
 
 ### Corregido

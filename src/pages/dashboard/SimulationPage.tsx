@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { AlertTriangle, BatteryCharging, Home, PanelTop, PlugZap, Ruler, Waypoints, Zap } from "lucide-react";
+import { AlertTriangle, BatteryCharging, Cable, Gauge, Home, PanelTop, PlugZap, Ruler, Waypoints, Zap } from "lucide-react";
 import { DashboardPage } from "@/components/dashboard/DashboardPage";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
@@ -15,7 +15,9 @@ import { BATTERY_CHEMISTRY_DEFAULTS, calculateBatterySizing } from "@/services/c
 import {
   recommendBattery,
   recommendInverter,
+  recommendMetering,
   recommendPanel,
+  recommendStringConfiguration,
   recommendTransformer
 } from "@/services/simulation/recommend";
 import { calculateArrayLayout } from "@/services/simulation/layout";
@@ -51,6 +53,7 @@ export function SimulationPage() {
   const [hsp, setHsp] = useState(getHspForCity("Bogotá") ?? 4.3);
   const [gridType, setGridType] = useState<GridType>("monofasica");
   const [panelId, setPanelId] = useState(panels[0]?.id ?? "");
+  const [minSiteTempC, setMinSiteTempC] = useState(10);
 
   const [needsBattery, setNeedsBattery] = useState(false);
   const [autonomyDays, setAutonomyDays] = useState(1);
@@ -114,6 +117,25 @@ export function SimulationPage() {
     return recommendTransformer(inverterRecommendation.inverter.acPowerKw, gridType);
   }, [needsTransformer, inverterRecommendation, gridType]);
 
+  const stringConfiguration = useMemo(() => {
+    if (!inverterRecommendation) return null;
+    return recommendStringConfiguration({
+      panel,
+      inverter: inverterRecommendation.inverter,
+      panelsNeeded: dimensioning.panelCount,
+      minSiteTempC
+    });
+  }, [inverterRecommendation, panel, dimensioning.panelCount, minSiteTempC]);
+
+  const meteringRecommendation = useMemo(() => {
+    if (!inverterRecommendation) return null;
+    return recommendMetering({
+      acPowerKw: inverterRecommendation.inverter.acPowerKw,
+      gridType,
+      hasTransformer: needsTransformer && Boolean(transformerRecommendation)
+    });
+  }, [inverterRecommendation, gridType, needsTransformer, transformerRecommendation]);
+
   const layout = useMemo(
     () =>
       calculateArrayLayout({
@@ -129,7 +151,9 @@ export function SimulationPage() {
   const sceneEquipmentInfo = useMemo(() => {
     const arrayInfo = {
       label: `${dimensioning.panelCount}× ${panel.model}`,
-      detail: `${formatKwp(dimensioning.realDcKwp)} · ${formatKwh(dimensioning.estimatedMonthlyKwh)}/mes`,
+      detail: stringConfiguration
+        ? `${stringConfiguration.numberOfStrings}× ${stringConfiguration.panelsPerString} en serie · ${formatKwp(dimensioning.realDcKwp)}`
+        : `${formatKwp(dimensioning.realDcKwp)} · ${formatKwh(dimensioning.estimatedMonthlyKwh)}/mes`,
       color: "#1d4ed8"
     };
     const inverterInfo = inverterRecommendation
@@ -157,11 +181,22 @@ export function SimulationPage() {
         : undefined;
 
     return { arrayInfo, inverterInfo, batteryInfo, transformerInfo };
-  }, [dimensioning, panel, inverterRecommendation, needsBattery, batteryRecommendation, needsTransformer, transformerRecommendation]);
+  }, [
+    dimensioning,
+    panel,
+    stringConfiguration,
+    inverterRecommendation,
+    needsBattery,
+    batteryRecommendation,
+    needsTransformer,
+    transformerRecommendation
+  ]);
 
   const installationElements = useMemo(() => {
     const items = [
-      `${dimensioning.panelCount} panel(es) ${panel.manufacturer} ${panel.model} de ${panel.powerWatts} W`,
+      stringConfiguration
+        ? `${dimensioning.panelCount} panel(es) ${panel.manufacturer} ${panel.model} de ${panel.powerWatts} W — conectados en ${stringConfiguration.numberOfStrings} string(s) de ${stringConfiguration.panelsPerString} paneles en serie cada uno, strings en paralelo hacia el inversor`
+        : `${dimensioning.panelCount} panel(es) ${panel.manufacturer} ${panel.model} de ${panel.powerWatts} W`,
       inverterRecommendation
         ? `1 inversor ${inverterRecommendation.inverter.manufacturer} ${inverterRecommendation.inverter.model} (${inverterRecommendation.inverter.acPowerKw} kW, ${inverterRecommendation.inverter.phases === 3 ? "trifásico" : "mono/bifásico"})`
         : "Inversor: no hay un modelo compatible en el catálogo actual",
@@ -172,13 +207,15 @@ export function SimulationPage() {
       `Protecciones AC: breaker de interconexión, SPD AC${needsBattery ? ", transferencia/PCS según el inversor" : ""}`,
       "Cableado: cable solar DC certificado (PV1-F / EN 50618) y conductor AC dimensionado por ampacidad y caída de tensión",
       "Puesta a tierra y equipotencialidad de toda la estructura",
-      "Monitoreo de generación y medición de energía"
+      meteringRecommendation
+        ? `Medición: ${meteringRecommendation.meterLabel} (medición ${meteringRecommendation.type})`
+        : "Monitoreo de generación y medición de energía"
     ];
     if (needsBattery && batteryRecommendation) {
       items.splice(
         2,
         0,
-        `${batteryRecommendation.unitsNeeded} batería(s) ${batteryRecommendation.battery.manufacturer} ${batteryRecommendation.battery.model} (${batteryRecommendation.battery.chemistry})`
+        `${batteryRecommendation.unitsNeeded} batería(s) ${batteryRecommendation.battery.manufacturer} ${batteryRecommendation.battery.model} (${batteryRecommendation.battery.chemistry}) — conectadas en paralelo para sumar capacidad al mismo voltaje de bus`
       );
     }
     if (needsTransformer && transformerRecommendation) {
@@ -190,12 +227,14 @@ export function SimulationPage() {
   }, [
     dimensioning.panelCount,
     panel,
+    stringConfiguration,
     inverterRecommendation,
     surface,
     needsBattery,
     batteryRecommendation,
     needsTransformer,
-    transformerRecommendation
+    transformerRecommendation,
+    meteringRecommendation
   ]);
 
   const installationSteps = useMemo(
@@ -257,6 +296,13 @@ export function SimulationPage() {
                 value={panelId}
                 options={panels.map((item) => ({ label: `${item.manufacturer} ${item.model}`, value: item.id }))}
                 onChange={(event) => setPanelId(event.target.value)}
+              />
+              <Input
+                label="Temperatura mínima del sitio (°C)"
+                hint="Se usa para corregir el Voc del panel y calcular cuántos caben en serie por string."
+                type="number"
+                value={minSiteTempC}
+                onChange={(event) => setMinSiteTempC(Number(event.target.value) || 0)}
               />
             </CardContent>
           </Card>
@@ -428,6 +474,35 @@ export function SimulationPage() {
             </CardContent>
           </Card>
 
+          {stringConfiguration && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 dark:bg-white/10">
+                    <Cable className="h-4 w-4" />
+                  </span>
+                  <p className="font-semibold">Conexión de paneles: serie y paralelo</p>
+                </div>
+                <Badge
+                  tone={
+                    stringConfiguration.withinVoltageLimit && stringConfiguration.withinMpptRange && stringConfiguration.withinCurrentLimit
+                      ? "success"
+                      : "warning"
+                  }
+                >
+                  {stringConfiguration.numberOfStrings}× {stringConfiguration.panelsPerString} en serie
+                </Badge>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-1 text-sm text-slate-600 dark:text-slate-400">
+                  {stringConfiguration.reasons.map((reason) => (
+                    <li key={reason}>• {reason}</li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          )}
+
           {needsBattery && (
             <Card>
               <CardHeader>
@@ -487,6 +562,28 @@ export function SimulationPage() {
             </Card>
           )}
 
+          {meteringRecommendation && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 dark:bg-white/10">
+                    <Gauge className="h-4 w-4" />
+                  </span>
+                  <p className="font-semibold">Medición y punto de conexión</p>
+                </div>
+                <Badge tone="info">Medición {meteringRecommendation.type}</Badge>
+              </CardHeader>
+              <CardContent>
+                <p className="font-medium">{meteringRecommendation.meterLabel}</p>
+                <ul className="mt-2 space-y-1 text-sm text-slate-600 dark:text-slate-400">
+                  {meteringRecommendation.reasons.map((reason) => (
+                    <li key={reason}>• {reason}</li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardHeader>
               <p className="font-semibold">Elementos que incluye la instalación</p>
@@ -512,7 +609,11 @@ export function SimulationPage() {
             <CardContent>
               <SingleLineDiagram
                 arrayLabel={`${dimensioning.panelCount}× ${panel.model}`}
-                arraySubtitle={formatKwp(dimensioning.realDcKwp)}
+                arraySubtitle={
+                  stringConfiguration
+                    ? `${stringConfiguration.numberOfStrings}× ${stringConfiguration.panelsPerString} en serie`
+                    : formatKwp(dimensioning.realDcKwp)
+                }
                 inverterLabel={inverterRecommendation?.inverter.model ?? "Sin catálogo compatible"}
                 inverterSubtitle={inverterRecommendation ? `${inverterRecommendation.inverter.acPowerKw} kW AC` : ""}
                 gridType={gridType}
@@ -522,7 +623,9 @@ export function SimulationPage() {
                     : undefined
                 }
                 batterySubtitle={
-                  needsBattery && batteryRecommendation ? formatKwh(batteryRecommendation.totalUsableCapacityKwh) : undefined
+                  needsBattery && batteryRecommendation
+                    ? `${formatKwh(batteryRecommendation.totalUsableCapacityKwh)}${batteryRecommendation.unitsNeeded > 1 ? " · paralelo" : ""}`
+                    : undefined
                 }
                 transformerLabel={
                   needsTransformer && transformerRecommendation ? transformerRecommendation.transformer.model : undefined
@@ -532,6 +635,8 @@ export function SimulationPage() {
                     ? `${transformerRecommendation.transformer.ratedPowerKva} kVA`
                     : undefined
                 }
+                meteringLabel={meteringRecommendation?.meterLabel}
+                meteringSubtitle={meteringRecommendation ? `Medición ${meteringRecommendation.type}` : undefined}
               />
             </CardContent>
           </Card>

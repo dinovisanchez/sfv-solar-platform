@@ -62,7 +62,8 @@ src/
 │   ├── maps/               mapProvider.ts (Google/OSM/Mapbox, interfaz lista, pendiente)
 │   ├── simulation/         weatherProvider.ts (pendiente), hspByCity.ts (referencia aproximada),
 │   │                       layout.ts (paneles que caben en un área), recommend.ts (elige panel/inversor/
-│   │                       batería/transformador del catálogo y arma el porqué), installationFlow.ts
+│   │                       batería/transformador del catálogo, arma el porqué, y calcula la configuración
+│   │                       de strings serie/paralelo y el tipo de medición), installationFlow.ts
 │   │                       (secuencia de pasos de instalación según batería/transformador/superficie)
 │   └── assistant/          knowledgeBase.ts, search.ts, formatAnswer.ts — asistente local sobre los manuales
 ├── styles/globals.css     Tailwind + tokens de tema claro/oscuro + glassmorphism + animaciones
@@ -85,15 +86,18 @@ src/
 ```
 Visitante → Landing (/) → "Abrir la plataforma" → /app (sin login, acceso libre)
   → Inicio: accesos directos a Simulación, Asistente y Catálogo + conteo de equipos disponibles
-  → Simulación: consumo, cobertura, ciudad (HSP de referencia editable), tipo de red, panel de referencia
+  → Simulación: consumo, cobertura, ciudad (HSP de referencia editable), tipo de red, panel de referencia,
+      temperatura mínima del sitio
       → ¿Batería? autonomía, energía y potencia crítica, química
       → ¿Transformador? se dimensiona a partir de la potencia AC del inversor recomendado
       → Techo o patio: ancho, largo, inclinación, orientación/azimut
-      → Resultado en vivo: kWp y paneles, inversor recomendado (con motivo), batería recomendada
-        (con motivo), transformador recomendado (con motivo), lista de elementos de la instalación,
-        diagrama unifilar (arreglo → protecciones DC → inversor → protecciones AC → transformador →
-        red, batería como rama), flujo de instalación paso a paso, plano 2D a escala (con aviso si no
-        caben todos los paneles) y vista 3D interactiva con marcadores etiquetados (modelo + producción/
+      → Resultado en vivo: kWp y paneles, inversor recomendado (con motivo), configuración de strings
+        (paneles en serie por string, strings en paralelo, con motivo), batería recomendada (con motivo,
+        conexión en paralelo), transformador recomendado (con motivo), medición recomendada (directa/
+        semidirecta/indirecta + medidor), lista de elementos de la instalación, diagrama unifilar
+        (arreglo → protecciones DC → inversor → protecciones AC → transformador → medidor/red, batería
+        como rama), flujo de instalación paso a paso, plano 2D a escala (con aviso si no caben todos los
+        paneles) y vista 3D interactiva con marcadores etiquetados (modelo + producción/
         potencia/capacidad) de inversor/batería/transformador
   → Asistente IA: preguntas libres respondidas solo con el Manual Maestro y la Guía Práctica (sin LLM externo)
   → Catálogo: paneles, inversores, baterías, transformadores, controladores, DPS, breakers, fusibles,
@@ -113,8 +117,10 @@ Visitante → Landing (/) → "Abrir la plataforma" → /app (sin login, acceso 
 | Asistente IA | Funcional: búsqueda local sobre el Manual Maestro y la Guía Práctica, siempre cita la fuente |
 | Catálogo de equipos | Funcional, ampliado: 6 paneles, 7 inversores, 5 baterías, 6 transformadores y variedad de protecciones/conductores/estructuras |
 | Vista 3D | Funcional: paneles inclinados/orientados según los parámetros, marcadores etiquetados (modelo + dato clave) de inversor/batería/transformador, cámara orbital. Es una representación esquemática (no simula sombras solares reales ni una línea de tiempo de construcción) |
-| Diagrama unifilar | Funcional: topología arreglo → protecciones DC → inversor → protecciones AC → (transformador) → red, con batería como rama, usando los modelos reales recomendados |
+| Diagrama unifilar | Funcional: topología arreglo → protecciones DC → inversor → protecciones AC → (transformador) → red/medidor, con batería como rama, usando los modelos reales recomendados |
 | Flujo de instalación | Funcional: secuencia de pasos generada según si hay batería/transformador y el tipo de superficie |
+| Configuración de strings (serie/paralelo) | Funcional: paneles en serie por string (Voc corregido por temperatura vs. límite DC del inversor, Vmp dentro del rango MPPT) y strings en paralelo (corriente por MPPT vs. máximo), con motivo explicado |
+| Medición y punto de conexión | Funcional: tipo de medición (directa/semidirecta/indirecta) según corriente AC estimada y presencia de transformador, con medidor bidireccional recomendado |
 | Mapas / recurso solar / export PDF-Excel | Interfaces y stubs listos; sin proveedor real conectado |
 | Despliegue | `render.yaml` + README listos para Render Free (Static Site) |
 | Tests / CI | Siguen sin existir (ver `TODO.md`) |
