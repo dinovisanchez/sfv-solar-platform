@@ -2,6 +2,12 @@
 
 Formato libre, en español, orientado a decisiones de producto/arquitectura más que a commits individuales.
 
+## [0.7.1] — 2026-07-07
+
+### Corregido
+
+- **Respuestas del asistente más específicas**: preguntas como "¿de qué manera conecto los paneles en serie o paralelo?" devolvían secciones genéricas (listas de prerrequisitos) en vez del procedimiento real con fórmula y ejemplo numérico. Causa: el Manual Maestro y la Guía Práctica usan subtítulos "Paso 1: ...", "Paso 2: ..." para los pasos de un mismo procedimiento (ej. "6. Como diseñar strings"), y el parser los indexaba como secciones independientes — la fórmula quedaba aislada en una sección que casi nunca ganaba la búsqueda. `knowledgeBase.ts` ahora fusiona esos pasos de vuelta en la sección padre (`mergeStepSections`), y `formatAnswer.ts` ya no trunca el extracto a 480 caracteres (ahora ~2000, suficiente para casi cualquier sección) para no cortar la respuesta completa. Verificado que las consultas que ya funcionaban bien no se degradaron.
+
 ## [0.7.0] — 2026-07-07
 
 ### Añadido

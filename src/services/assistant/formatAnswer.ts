@@ -1,4 +1,4 @@
-export function getExcerpt(content: string, maxLength = 480): string {
+export function getExcerpt(content: string, maxLength = 2000): string {
   const trimmed = content.trim();
   if (trimmed.length <= maxLength) return trimmed;
 

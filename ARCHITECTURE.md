@@ -35,12 +35,12 @@ Por decisión de producto, `/app/*` no requiere autenticación: `AppRoutes.tsx` 
 
 `src/services/assistant/` implementa un asistente de preguntas y respuestas que corre enteramente en el navegador:
 
-1. **`knowledgeBase.ts`** importa `MANUAL_MAESTRO_INGENIERIA_SOLAR_COLOMBIA.md` y `GUIA_PRACTICA_COMO_DISENAR_INSTALAR_SISTEMA_SOLAR.md` con el sufijo `?raw` de Vite (se inlinean como texto en el bundle en build-time) y los parte en ~80 secciones por encabezado `##`/`###`.
-2. **`search.ts`** tokeniza la pregunta (minúsculas, sin tildes, sin stopwords en español) y puntúa cada sección por coincidencia de términos en encabezado (peso alto) y contenido (peso menor, con tope para no premiar texto repetitivo).
-3. **`formatAnswer.ts`** recorta el contenido a un extracto legible y expone las preguntas sugeridas de la UI.
+1. **`knowledgeBase.ts`** importa `MANUAL_MAESTRO_INGENIERIA_SOLAR_COLOMBIA.md` y `GUIA_PRACTICA_COMO_DISENAR_INSTALAR_SISTEMA_SOLAR.md` con el sufijo `?raw` de Vite (se inlinean como texto en el bundle en build-time) y los parte en secciones por encabezado `##`/`###`. Las subsecciones tipo "Paso 1: ...", "Paso 2: ..." (procedimientos numerados dentro de un mismo tema, ej. "6. Como diseñar strings") se vuelven a fusionar en la sección padre (`mergeStepSections`) — separadas, la fórmula y el ejemplo numérico quedaban aislados en una sección que casi nunca ganaba la búsqueda; fusionadas, la respuesta incluye el procedimiento completo.
+2. **`search.ts`** tokeniza la pregunta y el contenido en palabras reales (minúsculas, sin tildes, sin stopwords), aplica un stem por prefijo (une variantes como conectar/conector/conectores) y expande la consulta con grupos de sinónimos de dominio (panel/módulo, conectar/string/serie, batería/acumulador, etc.) antes de puntuar por coincidencia de términos en encabezado (peso alto) y contenido (peso menor, con tope).
+3. **`formatAnswer.ts`** expone un extracto (hasta ~2000 caracteres, suficiente para casi cualquier sección incluso ya fusionada) y las preguntas sugeridas de la UI.
 4. **`AssistantChat.tsx`** (componente reutilizable) muestra la conversación y cada respuesta cita el documento y el encabezado exacto de origen — nunca texto generado, solo lo que el manual dice.
 
-Por qué esta forma y no un LLM real todavía: cualquier recomendación incorrecta sobre dimensionamiento o normativa eléctrica tiene riesgo de seguridad real (ver Manual Maestro §16, "Advertencias técnicas críticas"). Un buscador local sobre fuentes fijas no puede alucinar; un LLM sin RAG estricto y sin backend para ocultar la llave de API, sí.
+Por qué esta forma y no un LLM real todavía: cualquier recomendación incorrecta sobre dimensionamiento o normativa eléctrica tiene riesgo de seguridad real (ver Manual Maestro §16, "Advertencias técnicas críticas"). Un buscador local sobre fuentes fijas no puede alucinar; un LLM sin RAG estricto y sin backend para ocultar la llave de API, sí. Por la misma razón, cuando se pide una respuesta "más específica", la mejora correcta es mostrar más del texto real de la fuente (secciones completas en vez de fragmentos truncados) — nunca generar una respuesta nueva que no esté literalmente en el manual.
 
 ## 5. Simulación: recomendación de equipos, plano 2D y vista 3D
 

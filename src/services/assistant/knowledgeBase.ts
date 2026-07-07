@@ -48,7 +48,30 @@ function parseDocument(docId: KnowledgeSection["docId"], raw: string): Knowledge
   }
   flush();
 
-  return sections;
+  return mergeStepSections(sections);
+}
+
+const STEP_HEADING_PATTERN = /^paso\s*\d/i;
+
+/**
+ * Los pasos numerados ("Paso 1: ...", "Paso 2: ...") son subtitulos ###
+ * dentro de un mismo procedimiento (ej. "6. Como disenar strings"), no
+ * temas independientes. Separarlos deja la formula y el ejemplo numerico
+ * en una seccion aislada que casi nunca gana la busqueda; se fusionan de
+ * vuelta en la seccion padre para que la respuesta incluya el
+ * procedimiento completo, no solo la lista de prerrequisitos.
+ */
+function mergeStepSections(sections: KnowledgeSection[]): KnowledgeSection[] {
+  const merged: KnowledgeSection[] = [];
+  for (const section of sections) {
+    const parent = merged[merged.length - 1];
+    if (STEP_HEADING_PATTERN.test(section.heading) && parent) {
+      parent.content = `${parent.content}\n\n${section.heading}\n${section.content}`.trim();
+    } else {
+      merged.push({ ...section });
+    }
+  }
+  return merged;
 }
 
 /**
