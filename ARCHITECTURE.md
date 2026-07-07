@@ -1,104 +1,37 @@
 # Arquitectura — SFV Solar Platform
 
-Este documento explica las decisiones de arquitectura del frontend y cómo está preparado para evolucionar hacia un software comercial multiempresa sin reestructurar el proyecto.
+Este documento explica las decisiones de arquitectura del frontend: cómo está organizado hoy y qué se retiró deliberadamente al pivotar de "plataforma SaaS multiempresa" a "herramienta de simulación fotovoltaica enfocada".
 
 ## 1. Principio rector
 
-**Las páginas nunca dependen directamente de cómo ni dónde se guardan los datos.** Toda lectura/escritura pasa por una interfaz (`Repository<T>`, `MapProvider`, `SolarResourceProvider`, `ReportExporter`). Hoy esas interfaces las implementa `localStorage`; cuando exista backend, se reemplaza la implementación, no el código que la consume.
+**Los componentes de UI no contienen lógica de ingeniería.** Todo cálculo (dimensionamiento, financiero, batería, recomendación de equipos, layout físico) vive en `src/services/*` como funciones puras sin estado de React, testeables de forma aislada. Las páginas solo orquestan: leen inputs del usuario, llaman a los servicios, muestran el resultado.
 
-```
-Page/Component
-   → hook (useRepositoryList, useAuth, ...)
-      → interface (Repository<T>, MapProvider, ...)
-         → implementación actual: localStorage (src/services/storage)
-         → implementación futura: cliente REST (src/api)
-```
+Las integraciones externas que todavía no existen (mapas, recurso solar, exportación) se expresan como interfaces en `src/interfaces/*` con una implementación "stub" que falla explícitamente en vez de simular datos falsos — así ninguna pantalla puede mostrar un número inventado creyendo que es real.
 
 ## 2. Capas
 
 | Capa | Carpeta | Responsabilidad |
 |---|---|---|
-| Rutas | `src/routes` | Mapear URL → layout → página. `ProtectedRoute` existe pero no está en uso — el dashboard es de acceso libre por decisión de producto (ver §10) |
+| Rutas | `src/routes` | Mapear URL → layout → página. `ProtectedRoute` existe pero no está en uso — el dashboard es de acceso libre por decisión de producto (ver §3) |
 | Layouts | `src/layouts` | Cascarón visual compartido (público, auth, dashboard) |
 | Pages | `src/pages` | Composición de una pantalla a partir de components + hooks + services |
 | Components | `src/components` | UI reutilizable, sin acceso directo a datos (reciben props) |
-| Hooks | `src/hooks` | Puente entre componentes y servicios/contexto (estado, efectos) |
-| Context | `src/context` | Estado global transversal (tema, sesión) |
-| Services | `src/services` | Lógica de negocio y acceso a datos, sin JSX |
+| Hooks | `src/hooks` | Puente entre componentes y contexto (tema, sesión) |
+| Context | `src/context` | Estado global transversal (tema, sesión opcional) |
+| Services | `src/services` | Lógica de ingeniería y catálogo, sin JSX |
 | Models / Interfaces | `src/models`, `src/interfaces` | Contratos de dominio, sin dependencias de React |
-| API | `src/api` | Cliente HTTP y endpoints para cuando exista backend |
 | Config / Constants | `src/config`, `src/constants` | Datos de configuración y textos, no lógica |
 
-## 3. Multitenancy (empresas)
+## 3. Dashboard de acceso libre (sin muro de login)
 
-Todos los modelos de dominio (`Project`, `Client`, `Quote`) incluyen `organizationId` desde el día uno (`src/models/*.ts`), aunque hoy solo exista una organización de demostración (`org-demo`, ver `AuthContext.tsx`). Esto evita la migración más costosa de un SaaS: agregar el tenant después de que el modelo de datos ya existe sin él.
+Por decisión de producto, `/app/*` no requiere autenticación: `AppRoutes.tsx` monta `DashboardLayout` directamente, sin envolverlo en `ProtectedRoute`.
 
-`src/interfaces/tenant.ts` define `Organization`; `src/interfaces/user.ts` define `User` con `role` (`diseñador | instalador | supervisor | cliente | auditor | admin`) y `organizationId`. El backend futuro solo necesita aplicar el filtro por `organizationId` en cada consulta (o Row Level Security si es PostgreSQL) — el frontend ya asume ese límite en todos los modelos.
+- La plataforma no se piensa como "una página para crear cuentas primero" — el valor (simular, consultar el asistente, explorar el catálogo) está disponible de inmediato.
+- `AuthContext` sigue existiendo y `user` puede ser `null` en cualquier momento; los componentes que lo leen (`Topbar`, `OverviewPage`, `ProfilePage`) degradan con gracia a un estado "invitado".
+- Login/registro/recuperar contraseña (`src/pages/auth`) siguen existiendo y funcionando (mock local) para quien quiera personalizar su sesión — nunca fueron un requisito.
+- `ProtectedRoute.tsx` no se eliminó: queda como el punto de enganche si algún día existe backend real y se decide exigir sesión.
 
-## 4. Licencias y suscripciones
-
-`src/interfaces/subscription.ts` define `Plan`, `Subscription` y `License` de forma independiente del resto del dominio. `SettingsPage` y `AdminPage` ya los consumen (con datos mock) para mostrar plan actual, estado de suscripción y licencias usadas/disponibles. Cuando exista backend de facturación, estos tipos son el contrato que debe cumplir la API.
-
-## 5. Historial, versionado y compartir proyectos
-
-`src/models/project.ts` define, además de `Project`:
-
-- `ProjectVersion`: snapshot versionado de un proyecto (`version`, `snapshot`, `createdBy`), pensado para que cada cambio relevante (no cada tecleo) genere una versión inmutable — el patrón habitual de "guardar versión" en herramientas de diseño.
-- `ProjectShareLink`: token de enlace compartible con expiración opcional y permiso de edición (`canEdit`), para la futura función "compartir proyecto mediante enlace".
-
-Ninguno de los dos tiene UI todavía (no se pidió implementarlos, solo prepararlos); están tipados y listos para que Fase 5 del `ROADMAP.md` los conecte a endpoints reales sin rediseñar el modelo.
-
-## 6. Repositorio intercambiable (localStorage → API REST)
-
-`src/interfaces/repository.ts`:
-
-```ts
-interface Repository<T extends { id: string }> {
-  list(): Promise<T[]>;
-  get(id: string): Promise<T | null>;
-  create(entity: T): Promise<T>;
-  update(id: string, patch: Partial<T>): Promise<T>;
-  remove(id: string): Promise<void>;
-}
-```
-
-`src/services/storage/localStorageRepository.ts` implementa esa interfaz genéricamente; `projectRepository`, `clientRepository` y `quoteRepository` son instancias de una línea cada uno. El hook `useRepositoryList` (`src/hooks/useRepositoryList.ts`) da a cualquier página `list/create/update/remove` con estado de carga, sin duplicar lógica de fetching en cada página.
-
-Cuando exista la API REST (`src/api/client.ts` + `src/api/endpoints.ts` ya están el esqueleto del cliente HTTP), se crea un `createRestRepository<T>(endpoint)` con la misma forma y se cambia una línea de import por repositorio. Cero cambios en páginas, hooks de UI ni componentes.
-
-## 7. Por qué esto escala a 100.000+ proyectos sin reestructurar
-
-1. **El modelo de datos ya es multitenant** (`organizationId` en todo): las consultas futuras se indexan por organización, que es la clave natural de particionamiento en un SaaS B2B.
-2. **La paginación ya está tipada** (`Paginated<T>` en `src/types/common.ts`), aunque `useRepositoryList` hoy traiga todo de una vez desde `localStorage` (razonable con decenas de proyectos de demo). Migrar a `Repository<T>.list()` con parámetros de paginación es un cambio de firma localizado a `src/interfaces/repository.ts` y sus implementaciones — no a cada página.
-3. **Ningún componente de UI asume el tamaño del dataset**: `DataTable` y `EmptyState` son genéricos y reciben filas ya resueltas; agregar paginación/scroll infinito del lado del servicio no cambia su API.
-4. **El motor de cálculo (`services/calculations`) es puro y sin estado**: es trivial moverlo a un backend (Python/FastAPI, según visión del Manual Maestro) o a un Web Worker si el volumen de cálculo lo justifica, sin tocar la capa de UI.
-5. **El catálogo de equipos ya está desacoplado en `services/catalog`**: pasar de mock data a una tabla con miles de fichas técnicas (y búsqueda/paginación del lado del servidor) es el mismo cambio de implementación detrás de una interfaz descrito en el punto 2.
-
-## 8. Integraciones futuras ya con contrato definido
-
-| Integración | Interfaz | Implementación actual |
-|---|---|---|
-| Mapas (Google Maps / OSM / Mapbox) | `src/interfaces/mapProvider.ts` | Stub que lanza error explicando qué falta (`src/services/maps/mapProvider.ts`) |
-| Recurso solar (NASA POWER / PVGIS / Open-Meteo) | `src/interfaces/weatherProvider.ts` | Stub equivalente (`src/services/simulation/weatherProvider.ts`) |
-| Exportación PDF / Excel | `src/interfaces/exportProvider.ts` | Stub equivalente (`src/services/export/*.ts`), ya invocado desde `ReportsTab` |
-| API REST | `src/api/client.ts`, `src/api/endpoints.ts` | Cliente `fetch` que retorna `ApiResult<T>` tipado; sin `VITE_API_BASE_URL` retorna error controlado, no lanza excepción no manejada |
-
-## 9. Decisiones explícitas fuera de alcance por ahora
-
-- **No se implementó backend real.** Se pidió explícitamente dejar la arquitectura preparada, no construirlo.
-- **No se implementó PWA** (excluido explícitamente por el usuario).
-- **No se conectaron mapas ni clima reales.** Son interfaces con implementación pendiente a propósito, para no acoplar la UI a una librería o proveedor específico antes de decidirlo (el asistente IA sí se implementó, ver §11, pero en su variante local sin LLM externo).
-
-## 10. Dashboard de acceso libre (sin muro de login)
-
-Por decisión de producto, `/app/*` no requiere autenticación: `AppRoutes.tsx` monta `DashboardLayout` directamente, sin envolverlo en `ProtectedRoute`. Las razones y el trade-off:
-
-- La plataforma no se piensa como "una página para crear cuentas primero" — el valor (dimensionar, consultar el asistente, explorar el catálogo) debe estar disponible de inmediato.
-- `AuthContext` sigue existiendo y `user` puede ser `null` en cualquier momento; todos los componentes que lo leen (`Topbar`, `OverviewPage`, `ProfilePage`, `AdminPage`) degradan con gracia a un estado "invitado" en vez de asumir que siempre hay sesión.
-- Login/registro/recuperar contraseña (`src/pages/auth`) siguen existiendo y funcionando (`AuthContext` mock local) para quien quiera personalizar su sesión — solo dejaron de ser un requisito.
-- `ProtectedRoute.tsx` no se eliminó: es el punto de enganche cuando exista backend real y se decida exigir sesión (por ejemplo, para separar datos por organización de verdad en vez de la `org-demo` actual).
-
-## 11. Asistente IA local sobre los manuales (sin backend, sin LLM externo)
+## 4. Asistente IA local sobre los manuales (sin backend, sin LLM externo)
 
 `src/services/assistant/` implementa un asistente de preguntas y respuestas que corre enteramente en el navegador:
 
@@ -107,26 +40,57 @@ Por decisión de producto, `/app/*` no requiere autenticación: `AppRoutes.tsx` 
 3. **`formatAnswer.ts`** recorta el contenido a un extracto legible y expone las preguntas sugeridas de la UI.
 4. **`AssistantChat.tsx`** (componente reutilizable) muestra la conversación y cada respuesta cita el documento y el encabezado exacto de origen — nunca texto generado, solo lo que el manual dice.
 
-Por qué esta forma y no un LLM real todavía: cualquier recomendación incorrecta sobre dimensionamiento o normativa eléctrica tiene riesgo de seguridad real (ver Manual Maestro §16, "Advertencias técnicas críticas"). Un buscador local sobre fuentes fijas no puede alucinar; un LLM sin RAG estricto y sin backend para ocultar la llave de API, sí. Migrar a un LLM real más adelante (`ROADMAP.md`, funcionalidades futuras) debería mantener esta misma restricción: responder solo con fuente citada.
+Por qué esta forma y no un LLM real todavía: cualquier recomendación incorrecta sobre dimensionamiento o normativa eléctrica tiene riesgo de seguridad real (ver Manual Maestro §16, "Advertencias técnicas críticas"). Un buscador local sobre fuentes fijas no puede alucinar; un LLM sin RAG estricto y sin backend para ocultar la llave de API, sí.
 
-## 12. Documentación navegable (reutiliza la base del asistente)
+## 5. Simulación: recomendación de equipos, plano 2D y vista 3D
 
-`DocsPage.tsx` (`/app/documentacion`) no duplica el parseo de los manuales: reutiliza `KNOWLEDGE_BASE` de `src/services/assistant/knowledgeBase.ts` como tabla de contenidos (agrupada por documento) y como fuente de contenido. La diferencia con el asistente es el modo de consumo, no la fuente de datos:
+`SimulationPage.tsx` (`/app/simulacion`) orquesta varios servicios puros, todos sin estado de React:
 
-- Asistente: modo pregunta → respuesta puntual con cita.
-- Documentación: modo lectura → navegar/buscar y leer la sección completa, renderizada como Markdown real (`MarkdownContent.tsx`, vía la librería `marked`) en vez de texto plano.
+- **`services/calculations/dimensioning.ts`**: kWp requerido y número de paneles a partir de consumo, cobertura y HSP (motor original del MVP).
+- **`services/calculations/battery.ts`**: capacidad nominal de batería a partir de energía crítica diaria, días de autonomía y los defaults de DoD/eficiencia/degradación por química.
+- **`services/simulation/recommend.ts`**: no inventa equipos — filtra `CATALOG_DATA` (el mismo catálogo de `/app/catalog`) y elige panel/inversor/batería/**transformador** reales que mejor ajustan al requerimiento calculado, devolviendo el arreglo de razones (`reasons: string[]`) que la UI muestra tal cual:
+  - Inversor: minimiza la distancia de la relación DC/AC a ~1.15 dentro del rango 0.9–1.35, filtrando por fases compatibles con el tipo de red.
+  - Batería: unidades necesarias para cubrir capacidad **y** potencia continua requerida, eligiendo el modelo con menor sobredimensionamiento.
+  - Transformador (nuevo, opcional): kVA requeridos = potencia AC del inversor × margen de seguridad (25%), elige el de menor capacidad que cubra ese requerimiento con las fases correctas.
+- **`services/simulation/layout.ts`**: dado un área (techo/patio) y las dimensiones físicas del panel elegido (`PVModule.dimensionsM`), calcula cuántos paneles caben probando ambas orientaciones de montaje, con margen perimetral de acceso. Si no caben todos los paneles requeridos, lo reporta explícitamente (`fits: false`, `missingPanels`) en vez de dibujar un plano incorrecto.
+- **`services/simulation/hspByCity.ts`**: tabla de HSP de referencia por ciudad colombiana, marcada como aproximada; editable en la UI.
+- **`components/engineering/SystemLayoutDiagram.tsx`**: plano 2D a escala en SVG (vista en planta) — rectángulo del techo/patio con cotas, margen de mantenimiento y la grilla de paneles realmente ubicados.
+- **`components/engineering/ArraySceneViewer.tsx`** (nuevo): vista 3D interactiva con `@react-three/fiber` + `@react-three/drei`. Dibuja el mismo resultado de `layout.ts` pero en volumen: los paneles se inclinan según el ángulo indicado y el grupo completo rota según el azimut (orientación); el inversor, la batería y el transformador aparecen como marcadores con etiqueta junto al arreglo cuando están incluidos. Cámara orbital (`OrbitControls`) para rotar y hacer zoom.
 
-`marked` se usa con `dangerouslySetInnerHTML` porque el contenido siempre viene de los `.md` del propio repo (nunca de input de usuario) — no hay superficie de XSS ahí. Si en el futuro la documentación admite contenido cargado por usuarios (por ejemplo, notas propias de un ingeniero), ese contenido **no** debe pasar por el mismo pipeline sin sanitización.
+**Nota de honestidad técnica**: la vista 3D es una representación esquemática de la disposición y orientación del arreglo, no una simulación solar (no calcula sombras proyectadas por el sol real) ni una vista "4D" en el sentido de BIM (3D + cronograma de obra) — ese alcance sigue pendiente y se documenta en `TODO.md` si se quiere abordar más adelante.
 
-## 13. Simulación: recomendación de equipos y plano a escala
+`SimulationPage` se carga con `React.lazy` en `AppRoutes.tsx` porque Three.js agrega ~230 KB gzip al bundle; así el resto de la app (landing, asistente, catálogo) no paga ese costo si el usuario nunca visita Simulación.
 
-`SimulationPage.tsx` (`/app/simulacion`) es un flujo independiente de la pestaña "Dimensionamiento" de un proyecto (ver nota en `PROJECT_ANALYSIS.md` §6). Orquesta varios servicios ya existentes más tres nuevos, todos puros y sin estado de React:
+## 6. Integraciones futuras ya con contrato definido
 
-- **`services/calculations/dimensioning.ts`** (reutilizado, sin cambios): kWp requerido y número de paneles a partir de consumo, cobertura y HSP.
-- **`services/calculations/battery.ts`** (nuevo): capacidad nominal de batería a partir de energía crítica diaria, días de autonomía y los defaults de DoD/eficiencia/degradación por química (`BATTERY_CHEMISTRY_DEFAULTS`).
-- **`services/simulation/recommend.ts`** (nuevo): no inventa equipos — filtra `CATALOG_DATA` (el mismo catálogo de `/app/catalog`) y elige el inversor/batería real que mejor ajusta al requerimiento calculado, devolviendo también el arreglo de razones (`reasons: string[]`) que la UI muestra tal cual. Si el catálogo creciera con datos reales de fabricantes, esta función no cambia — solo mejora la calidad de las recomendaciones.
-- **`services/simulation/layout.ts`** (nuevo): dado un área (techo/patio) y las dimensiones físicas del panel elegido (`PVModule.dimensionsM`, agregado al modelo de catálogo), calcula cuántos paneles caben probando ambas orientaciones de montaje, dejando un margen perimetral de acceso. Si no caben todos los paneles requeridos, lo reporta explícitamente (`fits: false`, `missingPanels`) en vez de dibujar un plano incorrecto.
-- **`services/simulation/hspByCity.ts`** (nuevo): tabla de HSP de referencia por ciudad colombiana, explícitamente marcada como aproximada (no reemplaza `SolarResourceProvider` real de la §11 del roadmap); el campo queda editable en la UI para que el usuario lo sobrescriba.
-- **`components/engineering/SystemLayoutDiagram.tsx`** (nuevo): dibuja el resultado de `layout.ts` como un plano 2D a escala en SVG (equivalente ligero a una vista en planta de CAD) — rectángulo del techo/patio con cotas, margen de mantenimiento, y la grilla de paneles realmente ubicados.
+| Integración | Interfaz | Implementación actual |
+|---|---|---|
+| Mapas (Google Maps / OSM / Mapbox) | `src/interfaces/mapProvider.ts` | Stub que lanza error explicando qué falta (`src/services/maps/mapProvider.ts`) |
+| Recurso solar (NASA POWER / PVGIS / Open-Meteo) | `src/interfaces/weatherProvider.ts` | Stub equivalente (`src/services/simulation/weatherProvider.ts`); hoy se usa `hspByCity.ts` como referencia aproximada |
+| Exportación PDF / Excel | `src/interfaces/exportProvider.ts` | Stub equivalente (`src/services/export/*.ts`); sin pantalla que los invoque tras retirar "Reportes" |
 
-Ninguno de estos módulos depende de red ni de backend; todo el cálculo y el dibujo ocurren en el cliente con los datos que el usuario ingresa y el catálogo ya embebido.
+## 7. Qué se retiró al pivotar de SaaS multiempresa a herramienta enfocada
+
+Una versión anterior de este documento describía una arquitectura preparada para multitenant, roles, licencias/suscripciones, versionado de proyectos, enlaces compartibles y una API REST futura sobre un repositorio genérico (`Repository<T>` + `localStorageRepository`). El usuario pidió simplificar la navegación (quitar Documentación, Clientes, Cotizaciones, Reportes, Mis proyectos y Administrador) para enfocar el producto en Simulación + Asistente + Catálogo. Como consecuencia, se eliminó por completo (no se dejó código muerto):
+
+- `src/pages/dashboard/{ProjectsListPage,ProjectDetailPage,ClientsPage,QuotesPage,ReportsPage,AdminPage,DocsPage}.tsx` y `src/pages/dashboard/project/*` (tabs de proyecto).
+- `src/models/{project,client,quote,report}.ts` (se conservó solo `GridType`, movido a `src/models/electrical.ts` porque `SimulationPage` lo sigue usando).
+- `src/services/{projects,clients,quotes,storage}/*`, `src/interfaces/repository.ts`, `src/hooks/useRepositoryList.ts`.
+- `src/api/{client,endpoints}.ts` (cliente REST genérico, sin nada que lo consumiera).
+- `src/components/docs/MarkdownContent.tsx` y la dependencia `marked` (solo la usaba `DocsPage`).
+- `src/components/engineering/MapPreviewPlaceholder.tsx` (solo lo usaba la pestaña "General" de proyecto).
+
+Lo que **sí** se conservó porque sigue siendo parte del producto o es de bajo costo mantener:
+
+- `src/interfaces/{tenant,user,subscription}.ts`: `User`/`Role` los sigue usando `AuthContext`; `Plan`/`Subscription`/`License` los sigue mostrando `SettingsPage` (que no se eliminó).
+- `src/services/export/*.ts` e `src/interfaces/exportProvider.ts`: no tienen pantalla que los invoque hoy, pero son stubs pequeños y autocontenidos, coherentes con el pedido original de dejar preparada la exportación a PDF/Excel; se retoman si Simulación agrega un botón de exportar más adelante.
+- `ProtectedRoute.tsx`: sin uso, pero es el punto de enganche natural si vuelve a haber necesidad de sesión obligatoria.
+
+Si en el futuro se necesita volver a un modelo de proyectos guardados, historial o multiempresa, este documento (versión anterior en el historial de Git) y `ROADMAP.md` tienen el diseño ya pensado — no hay que redescubrirlo, solo reimplementarlo cuando el producto lo pida de nuevo.
+
+## 8. Decisiones explícitas fuera de alcance por ahora
+
+- **No se implementó backend real.**
+- **No se implementó PWA** (excluido explícitamente por el usuario).
+- **No se conectaron mapas ni clima reales.** Son interfaces con implementación pendiente a propósito.
+- **La vista 3D no es una simulación solar ni un BIM 4D** (ver §5) — es una representación esquemática de disposición y orientación.

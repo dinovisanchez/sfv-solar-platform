@@ -2,6 +2,32 @@
 
 Formato libre, en español, orientado a decisiones de producto/arquitectura más que a commits individuales.
 
+## [0.5.0] — 2026-07-07
+
+### Eliminado (pivote: SaaS multiempresa → herramienta de simulación enfocada)
+
+Pedido explícito del usuario para simplificar la navegación. Se eliminó por completo (sin dejar código muerto):
+
+- Páginas y navegación: Documentación, Clientes, Cotizaciones, Reportes, Mis proyectos (lista y detalle con sus tabs de proyecto), Administrador.
+- Modelos: `Project`, `Client`, `Quote`, `Report` (se conservó `GridType`, movido a `src/models/electrical.ts`).
+- Servicios: repositorios de proyectos/clientes/cotizaciones, `localStorageRepository`, `useRepositoryList`, cliente REST genérico (`src/api/*`).
+- Componentes: `MarkdownContent.tsx` y la dependencia `marked`, `MapPreviewPlaceholder.tsx`.
+- `OverviewPage` (Inicio) rediseñado sin depender de proyectos/clientes/cotizaciones.
+
+Ver `ARCHITECTURE.md` §7 para el detalle completo y el razonamiento.
+
+### Añadido
+
+- **Catálogo ampliado**: de 2 paneles/2 inversores/1 batería a 6 paneles, 7 inversores, 5 baterías, y más variedad de controladores/DPS/breakers/fusibles/conductores/estructuras.
+- **Transformador de potencia**: nueva categoría de catálogo y modelo `Transformer`; `recommendTransformer()` en `services/simulation/recommend.ts`; toggle "¿Necesita transformador?" en Simulación con recomendación y motivo.
+- **Inclinación y orientación** (`tiltDegrees`, `azimuthDegrees`) configurables en Simulación.
+- **Vista 3D interactiva** (`ArraySceneViewer.tsx`) con Three.js vía `@react-three/fiber` + `@react-three/drei`: paneles a escala, inclinados y orientados según los parámetros, marcadores de inversor/batería/transformador, cámara orbital (rotar/zoom). Cargada de forma diferida (`React.lazy`) en `AppRoutes.tsx` para no inflar el bundle principal (Three.js queda en un chunk separado de ~235 KB gzip que solo se descarga al entrar a Simulación).
+
+### Cambiado
+
+- Navegación del dashboard reducida a 5 secciones: Inicio, Simulación, Asistente IA, Catálogo, Configuración.
+- `PROJECT_ANALYSIS.md`, `ARCHITECTURE.md`, `ROADMAP.md` y `TODO.md` reescritos para reflejar el pivote de producto.
+
 ## [0.4.0] — 2026-07-07
 
 ### Añadido

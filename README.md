@@ -1,8 +1,8 @@
 # SFV Solar Platform
 
-Plataforma web para el diseño, simulación y gestión de proyectos fotovoltaicos en Colombia. React + Vite + TypeScript + Tailwind CSS + React Router.
+Herramienta web de simulación de ingeniería fotovoltaica para Colombia: dimensiona un sistema, recomienda paneles/inversor/batería/transformador reales con el motivo, y dibuja el arreglo en un plano 2D y una vista 3D interactiva. React + Vite + TypeScript + Tailwind CSS + React Router + Three.js.
 
-> Documentación relacionada: [`PROJECT_ANALYSIS.md`](./PROJECT_ANALYSIS.md) (arquitectura y estado actual), [`ARCHITECTURE.md`](./ARCHITECTURE.md) (decisiones técnicas y escalabilidad), [`ROADMAP.md`](./ROADMAP.md) (plan de fases), [`TODO.md`](./TODO.md) (pendientes concretos), [`CHANGELOG.md`](./CHANGELOG.md).
+> Documentación relacionada: [`PROJECT_ANALYSIS.md`](./PROJECT_ANALYSIS.md) (arquitectura y estado actual), [`ARCHITECTURE.md`](./ARCHITECTURE.md) (decisiones técnicas), [`ROADMAP.md`](./ROADMAP.md) (plan de fases), [`TODO.md`](./TODO.md) (pendientes concretos), [`CHANGELOG.md`](./CHANGELOG.md).
 
 ## Requisitos
 
@@ -41,7 +41,7 @@ cp .env.example .env.local
 | `VITE_GOOGLE_MAPS_API_KEY` | Geocodificación con Google Maps | No (integración futura) |
 | `VITE_MAPBOX_TOKEN` | Geocodificación con Mapbox | No (integración futura) |
 
-Sin estas variables la app funciona completa: los proyectos se guardan en `localStorage` del navegador (ver `src/services/storage/localStorageRepository.ts`) y los módulos de mapas/clima muestran su estado "próximamente".
+Sin estas variables la app funciona completa: no hay backend ni datos persistidos entre sesiones (cada simulación se calcula en memoria), y los módulos de mapas/clima muestran su estado "próximamente".
 
 ## Despliegue en Render (plan gratuito)
 
@@ -72,4 +72,4 @@ Este repo incluye [`render.yaml`](./render.yaml) listo para un **Static Site** d
 
 ## Estructura del proyecto
 
-Ver `ARCHITECTURE.md` para el detalle de carpetas (`components`, `pages`, `layouts`, `hooks`, `services`, `models`, `interfaces`, `context`, `api`, etc.) y las decisiones de escalabilidad (multitenant, versionado de proyectos, repositorios intercambiables entre `localStorage` y API REST).
+Ver `ARCHITECTURE.md` para el detalle de carpetas (`components`, `pages`, `layouts`, `hooks`, `services`, `models`, `interfaces`, `context`, etc.), cómo está compuesta la Simulación (dimensionamiento, recomendación de equipos, plano 2D y vista 3D) y qué se retiró al simplificar la navegación.

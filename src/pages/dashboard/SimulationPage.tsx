@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { AlertTriangle, BatteryCharging, Home, PanelTop, PlugZap, Ruler } from "lucide-react";
+import { AlertTriangle, BatteryCharging, Home, PanelTop, PlugZap, Ruler, Zap } from "lucide-react";
 import { DashboardPage } from "@/components/dashboard/DashboardPage";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
@@ -7,14 +7,20 @@ import { Select } from "@/components/ui/Select";
 import { StatCard } from "@/components/ui/StatCard";
 import { Badge } from "@/components/ui/Badge";
 import { SystemLayoutDiagram } from "@/components/engineering/SystemLayoutDiagram";
+import { ArraySceneViewer } from "@/components/engineering/ArraySceneViewer";
 import { calculateDimensioning } from "@/services/calculations/dimensioning";
 import { BATTERY_CHEMISTRY_DEFAULTS, calculateBatterySizing } from "@/services/calculations/battery";
-import { recommendBattery, recommendInverter, recommendPanel } from "@/services/simulation/recommend";
+import {
+  recommendBattery,
+  recommendInverter,
+  recommendPanel,
+  recommendTransformer
+} from "@/services/simulation/recommend";
 import { calculateArrayLayout } from "@/services/simulation/layout";
 import { HSP_BY_CITY, getHspForCity } from "@/services/simulation/hspByCity";
 import { CATALOG_DATA } from "@/services/catalog/mockData";
 import type { PVModule } from "@/models/catalog";
-import type { GridType } from "@/models/project";
+import type { GridType } from "@/models/electrical";
 
 const GRID_TYPE_OPTIONS: { label: string; value: GridType }[] = [
   { label: "Monofásica", value: "monofasica" },
@@ -51,6 +57,10 @@ export function SimulationPage() {
   const [surface, setSurface] = useState<"techo" | "patio">("techo");
   const [areaWidthM, setAreaWidthM] = useState(8);
   const [areaHeightM, setAreaHeightM] = useState(6);
+  const [tiltDegrees, setTiltDegrees] = useState(10);
+  const [azimuthDegrees, setAzimuthDegrees] = useState(180);
+
+  const [needsTransformer, setNeedsTransformer] = useState(false);
 
   function handleCityChange(value: string) {
     setCity(value);
@@ -95,6 +105,11 @@ export function SimulationPage() {
     return recommendBattery(batterySizing.requiredCapacityKwh, criticalPowerKw);
   }, [needsBattery, batterySizing, criticalPowerKw]);
 
+  const transformerRecommendation = useMemo(() => {
+    if (!needsTransformer || !inverterRecommendation) return null;
+    return recommendTransformer(inverterRecommendation.inverter.acPowerKw, gridType);
+  }, [needsTransformer, inverterRecommendation, gridType]);
+
   const layout = useMemo(
     () =>
       calculateArrayLayout({
@@ -129,8 +144,22 @@ export function SimulationPage() {
         `${batteryRecommendation.unitsNeeded} batería(s) ${batteryRecommendation.battery.manufacturer} ${batteryRecommendation.battery.model} (${batteryRecommendation.battery.chemistry})`
       );
     }
+    if (needsTransformer && transformerRecommendation) {
+      items.push(
+        `1 transformador ${transformerRecommendation.transformer.manufacturer} ${transformerRecommendation.transformer.model} (${transformerRecommendation.transformer.ratedPowerKva} kVA)`
+      );
+    }
     return items;
-  }, [dimensioning.panelCount, panel, inverterRecommendation, surface, needsBattery, batteryRecommendation]);
+  }, [
+    dimensioning.panelCount,
+    panel,
+    inverterRecommendation,
+    surface,
+    needsBattery,
+    batteryRecommendation,
+    needsTransformer,
+    transformerRecommendation
+  ]);
 
   return (
     <DashboardPage title="Simulación">
@@ -263,8 +292,49 @@ export function SimulationPage() {
                   value={areaHeightM}
                   onChange={(event) => setAreaHeightM(Number(event.target.value) || 0)}
                 />
+                <Input
+                  label="Inclinación (°)"
+                  hint="Ángulo del panel respecto a la horizontal."
+                  type="number"
+                  min={0}
+                  max={45}
+                  value={tiltDegrees}
+                  onChange={(event) => setTiltDegrees(Number(event.target.value) || 0)}
+                />
+                <Input
+                  label="Orientación / azimut (°)"
+                  hint="180° = hacia el sur, 0°/360° = norte, 90° = este, 270° = oeste."
+                  type="number"
+                  min={0}
+                  max={360}
+                  value={azimuthDegrees}
+                  onChange={(event) => setAzimuthDegrees(Number(event.target.value) || 0)}
+                />
               </div>
             </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <p className="font-semibold">Transformador de potencia</p>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={needsTransformer}
+                  onChange={(event) => setNeedsTransformer(event.target.checked)}
+                  className="h-4 w-4 rounded border-slate-300"
+                />
+                Incluir transformador
+              </label>
+            </CardHeader>
+            {needsTransformer && (
+              <CardContent>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Se dimensiona a partir de la potencia AC del inversor recomendado, con margen de
+                  seguridad. Útil cuando el punto de conexión requiere un cambio de nivel de tensión.
+                </p>
+              </CardContent>
+            )}
           </Card>
         </div>
 
@@ -341,6 +411,35 @@ export function SimulationPage() {
             </Card>
           )}
 
+          {needsTransformer && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 dark:bg-white/10">
+                    <Zap className="h-4 w-4" />
+                  </span>
+                  <p className="font-semibold">Transformador recomendado</p>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {transformerRecommendation ? (
+                  <>
+                    <p className="font-medium">
+                      {transformerRecommendation.transformer.manufacturer} {transformerRecommendation.transformer.model}
+                    </p>
+                    <ul className="mt-2 space-y-1 text-sm text-slate-600 dark:text-slate-400">
+                      {transformerRecommendation.reasons.map((reason) => (
+                        <li key={reason}>• {reason}</li>
+                      ))}
+                    </ul>
+                  </>
+                ) : (
+                  <p className="text-sm text-slate-500">No hay transformadores en el catálogo actual.</p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardHeader>
               <p className="font-semibold">Elementos que incluye la instalación</p>
@@ -377,6 +476,28 @@ export function SimulationPage() {
                 Orientación {layout.orientation === "portrait" ? "vertical" : "horizontal"} de módulo, {layout.rows}{" "}
                 fila(s) × {layout.cols} columna(s), margen perimetral de {layout.marginM} m para acceso de
                 mantenimiento.
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <p className="font-semibold">Vista 3D de la instalación</p>
+              <Badge tone="info">{tiltDegrees}° inclinación · {azimuthDegrees}° azimut</Badge>
+            </CardHeader>
+            <CardContent>
+              <ArraySceneViewer
+                layout={layout}
+                tiltDegrees={tiltDegrees}
+                azimuthDegrees={azimuthDegrees}
+                surface={surface}
+                hasBattery={needsBattery && Boolean(batteryRecommendation)}
+                hasTransformer={needsTransformer && Boolean(transformerRecommendation)}
+              />
+              <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+                Arrastra para rotar y usa la rueda del mouse para acercar. Los paneles se muestran inclinados
+                y orientados según los valores indicados; el inversor, la batería y el transformador aparecen
+                como marcadores junto al arreglo cuando están incluidos.
               </p>
             </CardContent>
           </Card>

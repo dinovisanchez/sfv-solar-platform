@@ -1,6 +1,8 @@
-import type { Battery, Inverter, PVModule } from "@/models/catalog";
+import type { Battery, Inverter, PVModule, Transformer } from "@/models/catalog";
 import { CATALOG_DATA } from "@/services/catalog/mockData";
-import type { GridType } from "@/models/project";
+import type { GridType } from "@/models/electrical";
+
+const TRANSFORMER_SAFETY_MARGIN = 1.25;
 
 export type InverterRecommendation = {
   inverter: Inverter;
@@ -74,4 +76,42 @@ export function recommendBattery(requiredCapacityKwh: number, requiredPowerKw: n
   ];
 
   return { battery: best.battery, unitsNeeded: best.unitsNeeded, totalUsableCapacityKwh: best.totalUsableCapacityKwh, reasons };
+}
+
+export type TransformerRecommendation = {
+  transformer: Transformer;
+  requiredKva: number;
+  reasons: string[];
+};
+
+/**
+ * Dimensionamiento simplificado: kVA requeridos = potencia AC * margen de
+ * seguridad (arranque, futuras cargas). No reemplaza un estudio de carga
+ * ni la coordinación de protecciones con el operador de red.
+ */
+export function recommendTransformer(requiredAcPowerKw: number, gridType: GridType): TransformerRecommendation | null {
+  const targetPhases = phasesForGridType(gridType);
+  const requiredKva = requiredAcPowerKw * TRANSFORMER_SAFETY_MARGIN;
+
+  const transformers = (CATALOG_DATA.transformadores as Transformer[]).filter((t) => t.phases === targetPhases);
+  const candidates = transformers.length > 0 ? transformers : (CATALOG_DATA.transformadores as Transformer[]);
+  if (candidates.length === 0) return null;
+
+  const scored = candidates.map((transformer) => ({
+    transformer,
+    oversizeKva: transformer.ratedPowerKva - requiredKva
+  }));
+
+  const covering = scored.filter((entry) => entry.oversizeKva >= 0).sort((a, b) => a.oversizeKva - b.oversizeKva);
+  const best = covering[0] ?? scored.sort((a, b) => b.oversizeKva - a.oversizeKva)[0];
+
+  const reasons = [
+    `Potencia AC de ${requiredAcPowerKw.toFixed(2)} kW con margen de seguridad (${Math.round((TRANSFORMER_SAFETY_MARGIN - 1) * 100)}%) requiere ~${requiredKva.toFixed(1)} kVA.`,
+    best.oversizeKva >= 0
+      ? `El modelo de ${best.transformer.ratedPowerKva} kVA cubre el requerimiento con margen.`
+      : `No hay un transformador del catálogo actual que cubra ${requiredKva.toFixed(1)} kVA; se muestra el de mayor capacidad disponible (${best.transformer.ratedPowerKva} kVA).`,
+    `Tipo ${best.transformer.type}, ${best.transformer.primaryVoltageV / 1000} kV / ${best.transformer.secondaryVoltageV} V, ${best.transformer.phases === 3 ? "trifásico" : "monofásico"}.`
+  ];
+
+  return { transformer: best.transformer, requiredKva, reasons };
 }

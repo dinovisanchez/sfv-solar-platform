@@ -4,6 +4,7 @@ export type CatalogCategory =
   | "paneles"
   | "inversores"
   | "baterias"
+  | "transformadores"
   | "controladores"
   | "dps"
   | "breakers"
@@ -61,4 +62,20 @@ export type Battery = CatalogItemBase & {
   roundTripEfficiency: number;
 };
 
-export type CatalogItem = PVModule | Inverter | Battery | (CatalogItemBase & { category: Exclude<CatalogCategory, "paneles" | "inversores" | "baterias"> });
+export type Transformer = CatalogItemBase & {
+  category: "transformadores";
+  ratedPowerKva: number;
+  primaryVoltageV: number;
+  secondaryVoltageV: number;
+  phases: 1 | 3;
+  type: "seco" | "aceite";
+};
+
+export type CatalogItem =
+  | PVModule
+  | Inverter
+  | Battery
+  | Transformer
+  | (CatalogItemBase & {
+      category: Exclude<CatalogCategory, "paneles" | "inversores" | "baterias" | "transformadores">;
+    });

@@ -19,6 +19,10 @@ function isBattery(item: CatalogItem): item is Extract<CatalogItem, { category: 
   return item.category === "baterias";
 }
 
+function isTransformer(item: CatalogItem): item is Extract<CatalogItem, { category: "transformadores" }> {
+  return item.category === "transformadores";
+}
+
 export const CATALOG_CATEGORIES: CatalogCategoryConfig[] = [
   {
     slug: "paneles",
@@ -38,6 +42,15 @@ export const CATALOG_CATEGORIES: CatalogCategoryConfig[] = [
     label: "Baterías",
     description: "Capacidad usable y química por fabricante.",
     formatSpecs: (item) => (isBattery(item) ? `${item.usableCapacityKwh} kWh · ${item.chemistry}` : "—")
+  },
+  {
+    slug: "transformadores",
+    label: "Transformadores",
+    description: "Transformadores de potencia para el punto de conexión.",
+    formatSpecs: (item) =>
+      isTransformer(item)
+        ? `${item.ratedPowerKva} kVA · ${item.primaryVoltageV / 1000}kV/${item.secondaryVoltageV}V · ${item.type}`
+        : "—"
   },
   {
     slug: "controladores",

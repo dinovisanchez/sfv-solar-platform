@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Route, Routes } from "react-router-dom";
 import { PublicLayout } from "@/layouts/PublicLayout";
 import { AuthLayout } from "@/layouts/AuthLayout";
@@ -9,20 +10,17 @@ import { RegisterPage } from "@/pages/auth/RegisterPage";
 import { ForgotPasswordPage } from "@/pages/auth/ForgotPasswordPage";
 
 import { OverviewPage } from "@/pages/dashboard/OverviewPage";
-import { ProjectsListPage } from "@/pages/dashboard/ProjectsListPage";
-import { ProjectDetailPage } from "@/pages/dashboard/ProjectDetailPage";
-import { ClientsPage } from "@/pages/dashboard/ClientsPage";
-import { QuotesPage } from "@/pages/dashboard/QuotesPage";
-import { ReportsPage } from "@/pages/dashboard/ReportsPage";
 import { SettingsPage } from "@/pages/dashboard/SettingsPage";
-import { AdminPage } from "@/pages/dashboard/AdminPage";
 import { ProfilePage } from "@/pages/dashboard/ProfilePage";
 import { AssistantPage } from "@/pages/dashboard/AssistantPage";
-import { DocsPage } from "@/pages/dashboard/DocsPage";
-import { SimulationPage } from "@/pages/dashboard/SimulationPage";
 import { CatalogListPage } from "@/pages/catalog/CatalogListPage";
 
 import { NotFoundPage } from "@/pages/misc/NotFoundPage";
+
+// Three.js (via ArraySceneViewer) solo se descarga cuando se visita Simulación.
+const SimulationPage = lazy(() =>
+  import("@/pages/dashboard/SimulationPage").then((module) => ({ default: module.SimulationPage }))
+);
 
 export function AppRoutes() {
   return (
@@ -44,19 +42,19 @@ export function AppRoutes() {
       */}
       <Route path="/app" element={<DashboardLayout />}>
         <Route index element={<OverviewPage />} />
-        <Route path="projects" element={<ProjectsListPage />} />
-        <Route path="projects/:projectId" element={<ProjectDetailPage />} />
-        <Route path="clients" element={<ClientsPage />} />
-        <Route path="quotes" element={<QuotesPage />} />
+        <Route
+          path="simulacion"
+          element={
+            <Suspense fallback={<div className="p-8 text-sm text-slate-400">Cargando simulación…</div>}>
+              <SimulationPage />
+            </Suspense>
+          }
+        />
+        <Route path="asistente" element={<AssistantPage />} />
         <Route path="catalog" element={<CatalogListPage />} />
         <Route path="catalog/:category" element={<CatalogListPage />} />
-        <Route path="reports" element={<ReportsPage />} />
         <Route path="settings" element={<SettingsPage />} />
-        <Route path="admin" element={<AdminPage />} />
         <Route path="profile" element={<ProfilePage />} />
-        <Route path="asistente" element={<AssistantPage />} />
-        <Route path="documentacion" element={<DocsPage />} />
-        <Route path="simulacion" element={<SimulationPage />} />
       </Route>
 
       <Route path="*" element={<NotFoundPage />} />

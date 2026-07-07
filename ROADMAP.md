@@ -43,7 +43,20 @@ Pedido explícito del usuario: una página de información navegable (no solo un
 - [x] Plano 2D a escala del arreglo de paneles (`SystemLayoutDiagram.tsx` + `services/simulation/layout.ts`): calcula filas/columnas que caben físicamente en el área dada (con margen de mantenimiento) y avisa explícitamente si no caben todos los paneles requeridos, en vez de dibujar algo incorrecto.
 - [x] Lista de "elementos que incluye la instalación" (paneles, inversor, batería si aplica, estructura según techo/patio, protecciones DC/AC, cableado, puesta a tierra, monitoreo) generada a partir del propio resultado, no un texto fijo.
 
-Ver `ARCHITECTURE.md` §13 para el detalle de cómo se compone `SimulationPage` a partir de servicios puros reutilizables. Pendiente explícito (ver `TODO.md`): conectar el resultado de Simulación a un proyecto guardado — hoy es un flujo independiente de la pestaña "Dimensionamiento" de cada proyecto.
+> **Actualización (2026-07-07)**: la página de Documentación descrita arriba se retiró en la Fase 0.7 al simplificar la navegación. El "conectar Simulación a un proyecto guardado" también quedó sin objeto porque el concepto de "proyecto guardado" se retiró en la misma fase. Ver Fase 0.7 y `ARCHITECTURE.md` §7 para el detalle de qué se quitó y por qué.
+
+## Fase 0.7: Simplificación de navegación + catálogo ampliado + transformador + vista 3D — ✅ Completada (2026-07-07)
+
+Pedido explícito del usuario: quitar del producto las secciones de gestión tipo CRM (Documentación, Clientes, Cotizaciones, Reportes, Mis proyectos, Administrador) para enfocar la plataforma en Simulación + Asistente + Catálogo; ampliar el catálogo; agregar la opción de incluir un transformador de potencia con recomendación; y llevar la visualización del arreglo a una vista 3D interactiva.
+
+- [x] **Navegación reducida a 5 secciones**: Inicio, Simulación, Asistente IA, Catálogo, Configuración (+ Perfil vía el avatar). Se eliminó por completo el código de Documentación, Clientes, Cotizaciones, Reportes, Mis proyectos y Administrador (páginas, modelos, repositorios, cliente REST genérico) — no quedó código muerto. Detalle en `ARCHITECTURE.md` §7.
+- [x] **Inicio (`OverviewPage`) rediseñado** sin depender de proyectos/clientes/cotizaciones: accesos directos a Simulación/Asistente/Catálogo y conteo real de equipos del catálogo.
+- [x] **Catálogo ampliado**: de 2 paneles/2 inversores/1 batería a 6 paneles, 7 inversores, 5 baterías, más variedad de controladores/DPS/breakers/fusibles/conductores/estructuras.
+- [x] **Transformador de potencia**: nueva categoría de catálogo (`transformadores`, modelo `Transformer`), `recommendTransformer()` en `services/simulation/recommend.ts` (kVA requeridos = potencia AC × margen de seguridad), toggle "¿Necesita transformador?" en Simulación con tarjeta de recomendación y motivo.
+- [x] **Inclinación y orientación configurables** (`tiltDegrees`, `azimuthDegrees`) en Simulación, usadas tanto en el resumen como en la vista 3D.
+- [x] **Vista 3D interactiva** (`ArraySceneViewer.tsx`, Three.js vía `@react-three/fiber` + `@react-three/drei`): paneles inclinados/orientados a escala real, marcadores de inversor/batería/transformador, cámara orbital. Cargada de forma diferida (`React.lazy`) para no inflar el bundle principal.
+
+Ver `ARCHITECTURE.md` §5 y §7 para el detalle técnico y la lista completa de lo retirado.
 
 ---
 
@@ -100,7 +113,7 @@ Objetivo: cerrar el ciclo de valor para el cliente final, más allá del cálcul
 Objetivo: elevar la experiencia de usuario de "una calculadora" a "un panel de diseño de ingeniería", siguiendo las 6 pantallas ya especificadas en la Guía Práctica §12 (datos del proyecto, consumo, techo/terreno, selector de equipos, resultado técnico, instalación guiada).
 
 - **Simulación del sistema**: producción horaria/mensual, autoconsumo, excedentes, importación desde red y clipping, sustituyendo el modelo HSP×PR fijo por series reales. Conectar `src/services/simulation/weatherProvider.ts` a un proveedor real (NASA POWER/PVGIS/Open-Meteo).
-- **Simulación 3D / layout de cubierta**: importación o dibujo de techo, obstáculos y sombras (Three.js, según Manual Maestro §13), cálculo de número máximo de paneles por área real y pasillos de mantenimiento.
+- ~~**Simulación 3D / layout de cubierta**~~ — una primera versión ya existe (`ArraySceneViewer.tsx`, Fase 0.7): paneles a escala, inclinación/orientación configurables, marcadores de equipos, cámara orbital. Pendiente: importar/dibujar el contorno real del techo (hoy es un rectángulo), obstáculos y sombras proyectadas por el sol real (hoy es esquemático, no simula sombras).
 - **Comparador de equipos**: el catálogo (`src/services/catalog`) ya existe con datos mock; falta reemplazar por fichas normalizadas reales y agregar comparación lado a lado.
 - **Geocodificación real** de la ubicación del proyecto conectando `src/services/maps/mapProvider.ts` (hoy `MapPreviewPlaceholder` es solo visual).
 - ~~Migrar de "una sola página con anchors" a routing real~~ — completado en Fase 0.5.
@@ -114,8 +127,8 @@ Objetivo: elevar la experiencia de usuario de "una calculadora" a "un panel de d
 Objetivo: pasar de "app cliente-only" a plataforma real multiusuario, cubriendo el ciclo de vida completo del proyecto (instalación, comisionamiento, mantenimiento).
 
 - Backend (Python + FastAPI según especificación del Manual Maestro §13) exponiendo el motor de cálculo de Fase 2 como servicio, con las mismas pruebas unitarias corriendo del lado servidor.
-- Base de datos PostgreSQL para los modelos ya tipados en el frontend (`src/models`, `src/interfaces`) desde Fase 0.5; jobs asíncronos (Celery/RQ) para simulaciones pesadas.
-- Autenticación real detrás de `AuthContext` (hoy es mock local) y autorización por rol: diseñador, instalador, supervisor, cliente, auditor — el tipo `Role` ya existe en `src/interfaces/user.ts`.
+- Base de datos PostgreSQL. El modelo de datos multitenant/proyectos/versionado descrito en versiones anteriores de este roadmap se retiró del frontend en la Fase 0.7 (ver `ARCHITECTURE.md` §7) porque el producto dejó de necesitar "proyectos guardados"; si esta fase reintroduce esa necesidad, hay que rediseñar el modelo (no reactivar código viejo — ya no existe).
+- Autenticación real detrás de `AuthContext` (hoy es mock local) y autorización por rol: diseñador, instalador, supervisor, cliente, auditor — el tipo `Role` sigue existiendo en `src/interfaces/user.ts`.
 - **Asistente de instalación paso a paso**: checklist interactiva por proyecto (ya existe el checklist estático en Manual Maestro §8 y Guía Práctica §11 como base de contenido), con captura de evidencia real: fotos, mediciones (Voc/Isc por string), torque, seriales de equipo y firma de acta.
 - **Diagnóstico de fallas**: implementar los árboles de decisión ya documentados (Manual Maestro §10) como flujo interactivo, con biblioteca de códigos de error por fabricante.
 - **Monitoreo y mantenimiento (O&M)**: tickets de mantenimiento preventivo/correctivo/predictivo, con las frecuencias ya sugeridas en Manual Maestro §9.
@@ -128,11 +141,10 @@ Objetivo: pasar de "app cliente-only" a plataforma real multiusuario, cubriendo 
 
 - ~~**Asistente IA con RAG** sobre manuales oficiales~~ — una primera versión ya existe (`src/services/assistant`, ver `ARCHITECTURE.md` §11): búsqueda local sobre el Manual Maestro y la Guía Práctica, sin LLM externo, siempre cita la sección de origen. Pendiente para el futuro: ampliar la base a fichas de fabricantes reales (no solo los dos manuales) y, si se conecta un LLM real, mantener la misma regla — responder solo con fuente citada y prohibir inventar valores de ficha técnica, dado el riesgo de seguridad eléctrica de una recomendación incorrecta.
 - **Revisor automático de diseños** vía IA, apoyado en el motor de reglas de Fase 2.
-- **Integración CAD** (exportación DXF/DWG) para planos.
-- **API pública** para integraciones de terceros, sobre el mismo contrato ya definido en `src/api/endpoints.ts`.
+- **Integración CAD** (exportación DXF/DWG) para planos, y contorno de techo real (no rectangular) en la vista 3D.
+- **API pública** para integraciones de terceros — el cliente REST genérico que existía (`src/api/endpoints.ts`) se retiró en la Fase 0.7 por falta de uso; se rediseña cuando haya backend real.
+- **Multiempresa / multitenant**: vuelve a ser "futuro" tras la Fase 0.7 (se retiró el modelo que lo preparaba, ver `ARCHITECTURE.md` §7) — solo relevante si el producto vuelve a necesitar cuentas de equipo, no para la herramienta de simulación actual.
 - **Internacionalización a otros países LatAm** con sus propias normativas (hoy el foco es exclusivamente Colombia, correctamente acotado en ambos manuales).
-
-> Nota: el multitenant/multiempresa ya no es "futuro" — el modelo de datos lo asume desde Fase 0.5 (ver `ARCHITECTURE.md` §3). Lo pendiente es la aplicación real del límite de organización en el backend.
 
 ---
 
