@@ -17,6 +17,7 @@ type ArraySceneViewerProps = {
   inverterInfo: EquipmentInfo;
   batteryInfo?: EquipmentInfo;
   transformerInfo?: EquipmentInfo;
+  meteringInfo?: EquipmentInfo;
 };
 
 function degToRad(deg: number) {
@@ -95,11 +96,13 @@ export function ArraySceneViewer({
   arrayInfo,
   inverterInfo,
   batteryInfo,
-  transformerInfo
+  transformerInfo,
+  meteringInfo
 }: ArraySceneViewerProps) {
   const markers: EquipmentInfo[] = [inverterInfo];
   if (batteryInfo) markers.push(batteryInfo);
   if (transformerInfo) markers.push(transformerInfo);
+  if (meteringInfo) markers.push(meteringInfo);
 
   const spacing = 1.1;
   const startX = -((markers.length - 1) * spacing) / 2;

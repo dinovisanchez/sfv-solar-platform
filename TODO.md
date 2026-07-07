@@ -5,10 +5,12 @@ Pendientes concretos del estado actual (herramienta de simulación enfocada, sin
 ## Motor de ingeniería
 
 - [x] ~~Validación de tensión (Voc corregido por temperatura vs. rango MPPT del inversor)~~ — hecho (`recommendStringConfiguration()`), incluye paneles en serie por string y strings en paralelo con validación de corriente por MPPT.
-- [ ] Diseño eléctrico detallado: calibre de conductor DC/AC y caída de tensión real (hoy Simulación no lo calcula; sí calcula strings, protecciones y medición a nivel de topología).
+- [x] ~~Calibre de conductor DC/AC y caída de tensión real~~ — hecho (`services/calculations/conductor.ts`), con tabla de referencia de ampacidad/resistencia y longitud de cable como input.
 - [ ] BOM con cantidades y alternativas compatibles, no solo la lista de texto actual.
-- [x] ~~Diagrama unifilar~~ — hecho (`SingleLineDiagram.tsx`), aunque es solo topología: no calcula calibres de conductor ni corrientes de cortocircuito reales.
-- [ ] `recommendMetering()` usa un umbral fijo (60 A) y una tensión de referencia fija (220 V) para decidir directa/semidirecta/indirecta — reemplazar por las reglas reales del operador de red cuando se conecte un backend normativo.
+- [x] ~~Diagrama unifilar~~ — hecho (`SingleLineDiagram.tsx`); ya muestra el calibre real de conductor y el tipo de medidor, pero sigue sin calcular corrientes de cortocircuito.
+- [x] ~~`recommendMetering()` usa un umbral fijo (60 A) inventado~~ — corregido: ahora usa la tabla real de RA8-030/CREG 038-2014/NTC 5019-2018 (nivel de tensión + capacidad instalada en kVA), ver `ARCHITECTURE.md` §5.1.
+- [ ] La tabla de ampacidad de `conductor.ts` es una referencia genérica (~NTC 2050/NEC 310.16, 75°C, ≤3 conductores) — no considera agrupamiento real, temperatura ambiente del sitio ni tipo de aislamiento específico; verificar contra el cálculo final antes de construir.
+- [ ] El umbral de ~15 kVA para medición directa (`DIRECT_METERING_MAX_KVA`) es una aproximación de "X" en la Tabla 5 de RA8-030 (que depende del medidor de conexión directa realmente disponible) — ajustar si el operador de red confirma un valor distinto.
 
 ## Integraciones externas
 
@@ -30,7 +32,7 @@ Pendientes concretos del estado actual (herramienta de simulación enfocada, sin
 - [ ] `SystemLayoutDiagram`/`ArraySceneViewer` no consideran obstáculos, sombras ni el contorno real del techo — hoy es un rectángulo. El techo/patio real casi nunca es rectangular.
 - [ ] La vista 3D no simula la posición del sol ni sombras proyectadas; es una representación esquemática de disposición y orientación, no un análisis de sombreado.
 - [ ] Guardar/compartir el resultado de una simulación (hoy se pierde al recargar la página — no hay "proyectos guardados" desde que se retiró esa capa, ver `ARCHITECTURE.md` §7). Si se quiere recuperar esta función, empezar por `localStorage` simple antes de reintroducir un modelo multitenant completo.
-- [ ] Pruebas unitarias para `battery.ts`, `layout.ts`, `recommend.ts` e `installationFlow.ts` (mismo criterio que el resto de `services/calculations`).
+- [ ] Pruebas unitarias para `battery.ts`, `conductor.ts`, `layout.ts`, `recommend.ts` e `installationFlow.ts` (mismo criterio que el resto de `services/calculations`).
 - [ ] `SingleLineDiagram` es esquemático (topología, no cálculo eléctrico); `InstallationFlowDiagram` es una secuencia de referencia, no un checklist interactivo con evidencia (fotos, mediciones) como se planeó en el Manual Maestro §13 para una fase posterior.
 
 ## Calidad y tooling

@@ -2,6 +2,19 @@
 
 Formato libre, en español, orientado a decisiones de producto/arquitectura más que a commits individuales.
 
+## [0.8.0] — 2026-07-07
+
+### Cambiado
+
+- **`recommendMetering()` reescrita con normativa real**: se investigaron RETIE y CREG (Resolución CREG 038 de 2014, NTC 5019-2018, y la norma técnica RA8-030 de Grupo EPM/ESSA/EDEQ/CENS/CHEC que las implementa) en vez de usar un umbral de corriente inventado. La clasificación ahora depende del nivel de tensión (BT si no hay transformador, MT/AT si lo hay) y de la capacidad instalada aproximada en kVA, siguiendo la Tabla 5 real de esa norma. Fuentes documentadas en `ARCHITECTURE.md` §5.1.
+- El medidor ahora es un paso propio en el flujo de instalación (con la descripción exacta según directa/semidirecta/indirecta) y un marcador etiquetado en la vista 3D.
+
+### Añadido
+
+- **`services/calculations/conductor.ts`**: dimensionamiento de calibre de conductor (AWG) para circuitos DC y AC, con tabla de referencia de ampacidad/resistencia (~NTC 2050/NEC 310.16, 75°C) y la fórmula de caída de tensión de la Guía Práctica §8. Elige el calibre más delgado que cumple ampacidad (125% de margen) y caída de tensión objetivo; si ninguno cumple, lo marca explícitamente.
+- Nuevos inputs de longitud de cable DC y AC en Simulación, y una tarjeta "Conductores y caída de tensión" con el calibre calculado y el motivo.
+- "Elementos de la instalación" y el diagrama unifilar ahora muestran el calibre AWG real en vez de un texto genérico ("cable dimensionado por ampacidad").
+
 ## [0.7.1] — 2026-07-07
 
 ### Corregido

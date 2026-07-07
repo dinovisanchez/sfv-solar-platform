@@ -13,6 +13,7 @@ import { InstallationFlowDiagram } from "@/components/engineering/InstallationFl
 import { calculateDimensioning } from "@/services/calculations/dimensioning";
 import { BATTERY_CHEMISTRY_DEFAULTS, calculateBatterySizing } from "@/services/calculations/battery";
 import {
+  REFERENCE_AC_VOLTAGE,
   recommendBattery,
   recommendInverter,
   recommendMetering,
@@ -23,6 +24,7 @@ import {
 import { calculateArrayLayout } from "@/services/simulation/layout";
 import { buildInstallationFlow } from "@/services/simulation/installationFlow";
 import { HSP_BY_CITY, getHspForCity } from "@/services/simulation/hspByCity";
+import { recommendConductor } from "@/services/calculations/conductor";
 import { formatKwh, formatKwp } from "@/utils/formatters";
 import { CATALOG_DATA } from "@/services/catalog/mockData";
 import type { PVModule } from "@/models/catalog";
@@ -68,6 +70,9 @@ export function SimulationPage() {
   const [azimuthDegrees, setAzimuthDegrees] = useState(180);
 
   const [needsTransformer, setNeedsTransformer] = useState(false);
+
+  const [dcCableLengthM, setDcCableLengthM] = useState(15);
+  const [acCableLengthM, setAcCableLengthM] = useState(10);
 
   function handleCityChange(value: string) {
     setCity(value);
@@ -136,6 +141,28 @@ export function SimulationPage() {
     });
   }, [inverterRecommendation, gridType, needsTransformer, transformerRecommendation]);
 
+  const dcConductor = useMemo(() => {
+    if (!stringConfiguration) return null;
+    return recommendConductor({
+      currentA: panel.isc,
+      lengthM: dcCableLengthM,
+      nominalVoltageV: stringConfiguration.vmpStringV,
+      circuitType: "dc",
+      maxVoltageDropPercent: 1.5
+    });
+  }, [stringConfiguration, panel, dcCableLengthM]);
+
+  const acConductor = useMemo(() => {
+    if (!meteringRecommendation) return null;
+    return recommendConductor({
+      currentA: meteringRecommendation.estimatedCurrentA,
+      lengthM: acCableLengthM,
+      nominalVoltageV: REFERENCE_AC_VOLTAGE,
+      circuitType: gridType === "trifasica" ? "ac-trifasica" : "ac-monofasica",
+      maxVoltageDropPercent: 2.5
+    });
+  }, [meteringRecommendation, acCableLengthM, gridType]);
+
   const layout = useMemo(
     () =>
       calculateArrayLayout({
@@ -179,8 +206,15 @@ export function SimulationPage() {
             color: "#d97706"
           }
         : undefined;
+    const meteringInfo = meteringRecommendation
+      ? {
+          label: "Medidor",
+          detail: `Medición ${meteringRecommendation.type}`,
+          color: "#7c3aed"
+        }
+      : undefined;
 
-    return { arrayInfo, inverterInfo, batteryInfo, transformerInfo };
+    return { arrayInfo, inverterInfo, batteryInfo, transformerInfo, meteringInfo };
   }, [
     dimensioning,
     panel,
@@ -189,7 +223,8 @@ export function SimulationPage() {
     needsBattery,
     batteryRecommendation,
     needsTransformer,
-    transformerRecommendation
+    transformerRecommendation,
+    meteringRecommendation
   ]);
 
   const installationElements = useMemo(() => {
@@ -205,7 +240,9 @@ export function SimulationPage() {
         : "Estructura de montaje a nivel de piso o tipo carport",
       "Protecciones DC: seccionador bajo carga, fusibles de string si hay paralelos, SPD tipo 2, caja combinadora si aplica",
       `Protecciones AC: breaker de interconexión, SPD AC${needsBattery ? ", transferencia/PCS según el inversor" : ""}`,
-      "Cableado: cable solar DC certificado (PV1-F / EN 50618) y conductor AC dimensionado por ampacidad y caída de tensión",
+      dcConductor && acConductor
+        ? `Cableado: DC ${dcConductor.awg} (${dcConductor.crossSectionMm2} mm², PV1-F/EN 50618) por string, AC ${acConductor.awg} (${acConductor.crossSectionMm2} mm²) del inversor al medidor`
+        : "Cableado: cable solar DC certificado (PV1-F / EN 50618) y conductor AC dimensionado por ampacidad y caída de tensión",
       "Puesta a tierra y equipotencialidad de toda la estructura",
       meteringRecommendation
         ? `Medición: ${meteringRecommendation.meterLabel} (medición ${meteringRecommendation.type})`
@@ -234,7 +271,9 @@ export function SimulationPage() {
     batteryRecommendation,
     needsTransformer,
     transformerRecommendation,
-    meteringRecommendation
+    meteringRecommendation,
+    dcConductor,
+    acConductor
   ]);
 
   const installationSteps = useMemo(
@@ -242,9 +281,10 @@ export function SimulationPage() {
       buildInstallationFlow({
         surface,
         hasBattery: needsBattery && Boolean(batteryRecommendation),
-        hasTransformer: needsTransformer && Boolean(transformerRecommendation)
+        hasTransformer: needsTransformer && Boolean(transformerRecommendation),
+        meteringType: meteringRecommendation?.type
       }),
-    [surface, needsBattery, batteryRecommendation, needsTransformer, transformerRecommendation]
+    [surface, needsBattery, batteryRecommendation, needsTransformer, transformerRecommendation, meteringRecommendation]
   );
 
   return (
@@ -429,6 +469,30 @@ export function SimulationPage() {
               </CardContent>
             )}
           </Card>
+
+          <Card>
+            <CardHeader>
+              <p className="font-semibold">Conductores</p>
+            </CardHeader>
+            <CardContent className="grid grid-cols-2 gap-4">
+              <Input
+                label="Longitud cable DC (m, una vía)"
+                type="number"
+                min={1}
+                step="0.5"
+                value={dcCableLengthM}
+                onChange={(event) => setDcCableLengthM(Number(event.target.value) || 0)}
+              />
+              <Input
+                label="Longitud cable AC (m, una vía)"
+                type="number"
+                min={1}
+                step="0.5"
+                value={acCableLengthM}
+                onChange={(event) => setAcCableLengthM(Number(event.target.value) || 0)}
+              />
+            </CardContent>
+          </Card>
         </div>
 
         <div className="space-y-5 lg:col-span-7">
@@ -586,6 +650,53 @@ export function SimulationPage() {
 
           <Card>
             <CardHeader>
+              <div className="flex items-center gap-3">
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 dark:bg-white/10">
+                  <Cable className="h-4 w-4" />
+                </span>
+                <p className="font-semibold">Conductores y caída de tensión</p>
+              </div>
+            </CardHeader>
+            <CardContent className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Cable DC (por string)</p>
+                {dcConductor ? (
+                  <>
+                    <p className="mt-1 font-medium">
+                      {dcConductor.awg} ({dcConductor.crossSectionMm2} mm²)
+                    </p>
+                    <ul className="mt-2 space-y-1 text-sm text-slate-600 dark:text-slate-400">
+                      {dcConductor.reasons.map((reason) => (
+                        <li key={reason}>• {reason}</li>
+                      ))}
+                    </ul>
+                  </>
+                ) : (
+                  <p className="mt-1 text-sm text-slate-500">Selecciona un inversor para calcular.</p>
+                )}
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Cable AC (inversor a medidor)</p>
+                {acConductor ? (
+                  <>
+                    <p className="mt-1 font-medium">
+                      {acConductor.awg} ({acConductor.crossSectionMm2} mm²)
+                    </p>
+                    <ul className="mt-2 space-y-1 text-sm text-slate-600 dark:text-slate-400">
+                      {acConductor.reasons.map((reason) => (
+                        <li key={reason}>• {reason}</li>
+                      ))}
+                    </ul>
+                  </>
+                ) : (
+                  <p className="mt-1 text-sm text-slate-500">Selecciona un inversor para calcular.</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
               <p className="font-semibold">Elementos que incluye la instalación</p>
             </CardHeader>
             <CardContent>
@@ -692,11 +803,12 @@ export function SimulationPage() {
                 inverterInfo={sceneEquipmentInfo.inverterInfo}
                 batteryInfo={sceneEquipmentInfo.batteryInfo}
                 transformerInfo={sceneEquipmentInfo.transformerInfo}
+                meteringInfo={sceneEquipmentInfo.meteringInfo}
               />
               <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
                 Arrastra para rotar y usa la rueda del mouse para acercar. Los paneles se muestran inclinados
-                y orientados según los valores indicados; el inversor, la batería y el transformador aparecen
-                como marcadores junto al arreglo cuando están incluidos.
+                y orientados según los valores indicados; el inversor, la batería, el transformador y el
+                medidor aparecen como marcadores junto al arreglo cuando están incluidos.
               </p>
             </CardContent>
           </Card>

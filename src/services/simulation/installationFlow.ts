@@ -7,6 +7,7 @@ export type InstallationFlowInput = {
   surface: "techo" | "patio";
   hasBattery: boolean;
   hasTransformer: boolean;
+  meteringType?: "directa" | "semidirecta" | "indirecta";
 };
 
 /**
@@ -14,7 +15,12 @@ export type InstallationFlowInput = {
  * SS10-11). No reemplaza el procedimiento especifico del fabricante ni el
  * plan de trabajo en alturas de cada proyecto.
  */
-export function buildInstallationFlow({ surface, hasBattery, hasTransformer }: InstallationFlowInput): InstallationStep[] {
+export function buildInstallationFlow({
+  surface,
+  hasBattery,
+  hasTransformer,
+  meteringType
+}: InstallationFlowInput): InstallationStep[] {
   const steps: InstallationStep[] = [
     {
       title: "Preparación",
@@ -68,10 +74,21 @@ export function buildInstallationFlow({ surface, hasBattery, hasTransformer }: I
     });
   }
 
+  const meteringDescription =
+    meteringType === "indirecta"
+      ? "Sistema de medición indirecta: transformadores de corriente (TC) y de tensión (TP), bloque de borneras de prueba, medidor bidireccional en el lado de alta tensión del punto de conexión."
+      : meteringType === "semidirecta"
+        ? "Sistema de medición semidirecta: transformadores de corriente (TC) por fase, bloque de borneras de prueba, medidor bidireccional con tensión medida en forma directa."
+        : "Sistema de medición directa: medidor bidireccional conectado directamente, sin transformadores de instrumento.";
+
   steps.push(
     {
-      title: "Conexión a red / medidor",
-      description: "Medición bidireccional o de frontera según el trámite ante el operador de red."
+      title: "Instalación del sistema de medición",
+      description: meteringDescription
+    },
+    {
+      title: "Conexión a red",
+      description: "Verificación del punto de conexión y trámite de puesta en servicio ante el operador de red."
     },
     {
       title: "Puesta a tierra y equipotencialidad",

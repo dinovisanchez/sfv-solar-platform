@@ -79,6 +79,17 @@ Pedido explícito del usuario: que la simulación aconseje si los paneles van en
 
 Ver `ARCHITECTURE.md` §5 para el detalle técnico.
 
+## Fase 0.10: Medición investigada contra RETIE/CREG reales y motor de conductores — ✅ Completada (2026-07-07)
+
+Pedido explícito del usuario: no usar una regla de medición inventada — investigar RETIE y CREG para saber qué tipo de medición corresponde, mostrarlo en el flujo y en la vista 3D, y dimensionar conductores con más ingeniería.
+
+- [x] **`recommendMetering()` reescrita** con la tabla real de la norma técnica RA8-030 (Grupo EPM/ESSA/EDEQ/CENS/CHEC, basada en NTC 5019-2018 y Resolución CREG 038 de 2014): decide por nivel de tensión (BT/MT/AT) y capacidad instalada en kVA, no por un umbral de corriente inventado. Fuentes documentadas en `ARCHITECTURE.md` §5.1.
+- [x] El medidor ahora aparece como paso propio en el flujo de instalación (con la descripción exacta según directa/semidirecta/indirecta) y como marcador etiquetado en la vista 3D.
+- [x] **`services/calculations/conductor.ts`** (nuevo): dimensionamiento de calibre AWG para DC y AC, con tabla de referencia de ampacidad/resistencia (~NTC 2050/NEC 310.16, 75°C) y la fórmula de caída de tensión de Guía Práctica §8. Nuevos inputs de longitud de cable DC/AC en Simulación y tarjeta de resultado con el calibre, la caída de tensión calculada y el motivo.
+- [x] "Elementos de la instalación" y el diagrama unifilar ya no dicen "cable dimensionado por ampacidad" en genérico — muestran el calibre AWG real calculado.
+
+Ver `ARCHITECTURE.md` §5 y §5.1 para el detalle técnico y las fuentes.
+
 ---
 
 ## Fase 1: Base técnica y modelo de datos

@@ -56,7 +56,8 @@ src/
 │   └── misc/NotFoundPage.tsx
 ├── routes/              AppRoutes.tsx, ProtectedRoute.tsx (sin uso hoy, listo para backend futuro)
 ├── services/
-│   ├── calculations/     dimensioning.ts (motor original), financial.ts (VPN/TIR/payback/ROI), battery.ts (capacidad por autonomía/DoD/eficiencia)
+│   ├── calculations/     dimensioning.ts (motor original), financial.ts (VPN/TIR/payback/ROI), battery.ts (capacidad por autonomía/DoD/eficiencia),
+│   │                     conductor.ts (calibre AWG por ampacidad y caída de tensión, DC y AC)
 │   ├── catalog/           categories.ts, mockData.ts (paneles, inversores, baterías, transformadores, protecciones, conductores, estructuras)
 │   ├── export/            pdfExporter.ts, excelExporter.ts (interfaz lista, implementación pendiente)
 │   ├── maps/               mapProvider.ts (Google/OSM/Mapbox, interfaz lista, pendiente)
@@ -120,7 +121,8 @@ Visitante → Landing (/) → "Abrir la plataforma" → /app (sin login, acceso 
 | Diagrama unifilar | Funcional: topología arreglo → protecciones DC → inversor → protecciones AC → (transformador) → red/medidor, con batería como rama, usando los modelos reales recomendados |
 | Flujo de instalación | Funcional: secuencia de pasos generada según si hay batería/transformador y el tipo de superficie |
 | Configuración de strings (serie/paralelo) | Funcional: paneles en serie por string (Voc corregido por temperatura vs. límite DC del inversor, Vmp dentro del rango MPPT) y strings en paralelo (corriente por MPPT vs. máximo), con motivo explicado |
-| Medición y punto de conexión | Funcional: tipo de medición (directa/semidirecta/indirecta) según corriente AC estimada y presencia de transformador, con medidor bidireccional recomendado |
+| Medición y punto de conexión | Funcional: tipo de medición (directa/semidirecta/indirecta) según capacidad instalada y nivel de tensión, con cita real a RA8-030/CREG 038-2014/NTC 5019-2018 (ver `ARCHITECTURE.md` §5.1); medidor bidireccional recomendado; visible en el unifilar, el flujo de instalación y la vista 3D |
+| Conductores (DC y AC) | Funcional: calibre AWG por ampacidad (margen 125%) y caída de tensión objetivo, a partir de la longitud de cable ingresada |
 | Mapas / recurso solar / export PDF-Excel | Interfaces y stubs listos; sin proveedor real conectado |
 | Despliegue | `render.yaml` + README listos para Render Free (Static Site) |
 | Tests / CI | Siguen sin existir (ver `TODO.md`) |

@@ -196,18 +196,38 @@ export type MeteringRecommendation = {
   type: MeteringType;
   meterLabel: string;
   estimatedCurrentA: number;
+  installedCapacityKva: number;
+  accuracyClass: string;
   reasons: string[];
 };
 
-const REFERENCE_AC_VOLTAGE = 220;
-const DIRECT_METERING_CURRENT_LIMIT_A = 60;
+export const REFERENCE_AC_VOLTAGE = 220;
+const ASSUMED_POWER_FACTOR = 0.9;
+/**
+ * Aproximacion de "X" (Tabla 5, RA8-030 / NTC 5019-2018): la norma no fija un
+ * kVA universal, depende de la corriente maxima del medidor de conexion
+ * directa disponible (Tabla 6 exige Imax >= 60 A). A 220 V esto equivale a
+ * ~13 kVA monofasico; se usa 15 kVA como referencia conservadora, editable
+ * por el operador de red segun el medidor que realmente instale.
+ */
+const DIRECT_METERING_MAX_KVA = 15;
+const SEMIDIRECTA_MAX_KVA_AT_BT = 100;
 
 /**
- * Regla general de referencia (no reemplaza el esquema de medida exigido
- * por el operador de red, que puede variar por corriente, tension o
- * politica propia): a mayor corriente o si hay transformador de por medio
- * (conexion en un nivel de tension distinto), se requieren transformadores
- * de instrumento (TC y/o TP) en vez de medicion directa.
+ * Basado en la Tabla 5 "Seleccion de los medidores de energia" (RA8-030,
+ * norma tecnica del Grupo EPM/ESSA/EDEQ/CENS/CHEC basada en NTC 5019-2018 y
+ * en el Codigo de Medida, Resolucion CREG 038 de 2014): el tipo de medicion
+ * depende del nivel de tension (BT vs. MT/AT) y de la capacidad instalada
+ * en kVA en el punto de conexion, no de un umbral de corriente aislado.
+ *
+ * - BT, CI <= X (~Imax del medidor de conexion directa): medicion directa.
+ * - BT, X < CI < 100 kVA: medicion semidirecta (TC, tension directa).
+ * - MT o AT (conexion a traves de un transformador de potencia — el punto de
+ *   medida se ubica en el lado de alta tension del transformador segun
+ *   RA8-030 numeral 6.8.a) o CI >= 100 kVA: medicion indirecta (TC + TP).
+ *
+ * Esto sigue siendo una referencia: el operador de red aplica su propia
+ * norma tecnica (equivalente a RA8-030) y puede exigir un esquema distinto.
  */
 export function recommendMetering(params: {
   acPowerKw: number;
@@ -219,35 +239,43 @@ export function recommendMetering(params: {
       ? (params.acPowerKw * 1000) / (Math.sqrt(3) * REFERENCE_AC_VOLTAGE)
       : (params.acPowerKw * 1000) / REFERENCE_AC_VOLTAGE;
 
+  const installedCapacityKva = params.acPowerKw / ASSUMED_POWER_FACTOR;
+  const nivelTension = params.hasTransformer ? "MT/AT" : "BT";
+
   let type: MeteringType;
-  if (params.hasTransformer) {
+  if (nivelTension === "MT/AT" || installedCapacityKva >= SEMIDIRECTA_MAX_KVA_AT_BT) {
     type = "indirecta";
-  } else if (estimatedCurrentA > DIRECT_METERING_CURRENT_LIMIT_A) {
+  } else if (installedCapacityKva > DIRECT_METERING_MAX_KVA) {
     type = "semidirecta";
   } else {
     type = "directa";
   }
 
+  const accuracyClass = type === "directa" ? "1 activa / 2 reactiva" : installedCapacityKva >= 30000 ? "0,2S activa / 2 reactiva" : "0,5S activa / 2 reactiva";
+
   const meterLabel =
     type === "directa"
       ? "Medidor bidireccional de conexión directa"
       : type === "semidirecta"
-        ? "Medidor bidireccional semidirecto (con transformadores de corriente)"
-        : "Medidor bidireccional indirecto (con transformadores de corriente y de tensión)";
+        ? "Medidor bidireccional semidirecto (con transformadores de corriente TC)"
+        : "Medidor bidireccional indirecto (con transformadores de corriente TC y de tensión TP)";
 
   const typeExplanation =
     type === "indirecta"
-      ? "Con transformador de potencia de por medio, la medición típica es indirecta: transformadores de corriente (TC) y de tensión (TP) referidos al punto de medida."
+      ? nivelTension === "MT/AT"
+        ? "Conexión a través de un transformador de potencia: el punto de medida se ubica en el lado de alta tensión del transformador (RA8-030 §6.8.a) y requiere TC y TP."
+        : "Capacidad instalada ≥100 kVA: aunque la conexión sea en BT, a este tamaño típicamente se requiere transformador propio y medición indirecta."
       : type === "semidirecta"
-        ? "Corriente por encima de lo que admite un medidor de conexión directa: medición semidirecta con transformadores de corriente (TC), tensión medida en forma directa."
-        : "Corriente dentro del rango de un medidor de conexión directa, sin transformadores de instrumento.";
+        ? `Capacidad instalada de ${installedCapacityKva.toFixed(1)} kVA en BT, por encima de lo que cubre un medidor de conexión directa (~${DIRECT_METERING_MAX_KVA} kVA de referencia): medición semidirecta con TC, tensión medida en forma directa.`
+        : `Capacidad instalada de ${installedCapacityKva.toFixed(1)} kVA en BT, dentro del rango de un medidor de conexión directa, sin transformadores de instrumento.`;
 
   const reasons = [
-    `Corriente AC estimada ≈ ${estimatedCurrentA.toFixed(1)} A (${params.gridType === "trifasica" ? "trifásica" : "mono/bifásica"}, ${REFERENCE_AC_VOLTAGE} V de referencia).`,
+    `Capacidad instalada aproximada: ${installedCapacityKva.toFixed(1)} kVA (potencia AC del inversor ÷ factor de potencia ${ASSUMED_POWER_FACTOR}), nivel de tensión ${nivelTension}.`,
     typeExplanation,
-    "Medidor bidireccional (importación/exportación) recomendado para autogeneración con posible entrega de excedentes, según la clasificación CREG del proyecto.",
-    "Regla general de referencia: el operador de red define el umbral y el esquema de medida exigido para cada caso; validar antes de especificar el equipo final."
+    `Clase de exactitud de referencia: ${accuracyClass} (Tabla 2/5, Resolución CREG 038 de 2014 / NTC 5019-2018).`,
+    "Medidor bidireccional (importación/exportación) recomendado para autogeneración con entrega de excedentes, con perfil horario según CREG 015 de 2018 si aplica mercado no regulado.",
+    "Referencia basada en la Tabla 5 de la norma técnica RA8-030 (Grupo EPM/ESSA/EDEQ/CENS/CHEC, con base en NTC 5019-2018 y la Resolución CREG 038 de 2014); cada operador de red aplica su propia norma equivalente — validar antes de especificar el equipo final."
   ];
 
-  return { type, meterLabel, estimatedCurrentA, reasons };
+  return { type, meterLabel, estimatedCurrentA, installedCapacityKva, accuracyClass, reasons };
 }
