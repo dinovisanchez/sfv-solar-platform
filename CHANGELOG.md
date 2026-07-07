@@ -2,6 +2,12 @@
 
 Formato libre, en español, orientado a decisiones de producto/arquitectura más que a commits individuales.
 
+## [0.6.1] — 2026-07-07
+
+### Corregido
+
+- **Búsqueda del asistente IA**: preguntas como "¿cómo se debe conectar entre paneles?" no encontraban la sección real (`5.1 Módulos fotovoltaicos`, `6. Cómo diseñar strings`) porque el buscador solo hacía coincidencia de subcadena exacta, sin normalizar variantes de palabra (conectar/conector/conectores) ni vocabulario equivalente (panel/módulo, conectar/string/serie). `services/assistant/search.ts` ahora tokeniza el contenido en palabras reales, aplica un stem por prefijo (agrupa conectar/conector/conectores/conectando) y expande la consulta con grupos de sinónimos de dominio antes de puntuar. Verificado que las consultas que ya funcionaban bien siguen funcionando igual o mejor.
+
 ## [0.6.0] — 2026-07-07
 
 ### Añadido
