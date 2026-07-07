@@ -15,6 +15,8 @@ export const ROUTES = {
     admin: "/app/admin",
     profile: "/app/profile",
     assistant: "/app/asistente",
+    docs: "/app/documentacion",
+    simulation: "/app/simulacion",
     catalog: (category?: string) => (category ? `/app/catalog/${category}` : "/app/catalog")
   }
 } as const;

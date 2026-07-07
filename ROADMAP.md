@@ -32,6 +32,19 @@ No estaba en la versión anterior de este roadmap; se ejecutó como un salto exp
 
 Esta fase adelanta parte de lo que antes era "Fase 4" (routing real, panel de proyecto) y parte de "Fase 5" (arquitectura multitenant, roles) y de "Funcionalidades futuras" (asistente IA). Las secciones siguientes se ajustaron para no duplicar ese trabajo.
 
+## Fase 0.6: Documentación navegable y Simulación con recomendación de equipos — ✅ Completada (2026-07-07)
+
+Pedido explícito del usuario: una página de información navegable (no solo un chat) y un simulador que pida los datos del proyecto, recomiende batería/inversor reales con justificación, y dibuje el arreglo de paneles a escala sobre el techo o patio indicado.
+
+- [x] **Documentación** (`/app/documentacion`): TOC + buscador sobre las mismas ~80 secciones del asistente, contenido renderizado como Markdown real (`marked`), no solo texto plano. Ver `ARCHITECTURE.md` §12.
+- [x] **Simulación** (`/app/simulacion`): formulario de consumo, cobertura, ciudad (HSP de referencia editable), tipo de red, respaldo con batería (autonomía/energía crítica/potencia crítica/química) y superficie de instalación (techo/patio + dimensiones).
+- [x] Dimensionamiento reutiliza el motor original; nuevo motor de baterías (`services/calculations/battery.ts`) con la fórmula de capacidad nominal por autonomía/DoD/eficiencia.
+- [x] Recomendación real de inversor y batería desde el catálogo existente (`services/simulation/recommend.ts`), con el porqué explicado en texto (relación DC/AC, fases, capacidad/potencia cubierta, química, certificaciones) — no una sugerencia genérica.
+- [x] Plano 2D a escala del arreglo de paneles (`SystemLayoutDiagram.tsx` + `services/simulation/layout.ts`): calcula filas/columnas que caben físicamente en el área dada (con margen de mantenimiento) y avisa explícitamente si no caben todos los paneles requeridos, en vez de dibujar algo incorrecto.
+- [x] Lista de "elementos que incluye la instalación" (paneles, inversor, batería si aplica, estructura según techo/patio, protecciones DC/AC, cableado, puesta a tierra, monitoreo) generada a partir del propio resultado, no un texto fijo.
+
+Ver `ARCHITECTURE.md` §13 para el detalle de cómo se compone `SimulationPage` a partir de servicios puros reutilizables. Pendiente explícito (ver `TODO.md`): conectar el resultado de Simulación a un proyecto guardado — hoy es un flujo independiente de la pestaña "Dimensionamiento" de cada proyecto.
+
 ---
 
 ## Fase 1: Base técnica y modelo de datos

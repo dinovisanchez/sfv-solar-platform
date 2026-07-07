@@ -37,6 +37,9 @@ export type PVModule = CatalogItemBase & {
   imp: number;
   temperatureCoefficientVoc: number;
   efficiency: number;
+  /** Dimensiones físicas del módulo en metros, orientación de fábrica (portrait). */
+  dimensionsM: { width: number; height: number };
+  weightKg: number;
 };
 
 export type Inverter = CatalogItemBase & {

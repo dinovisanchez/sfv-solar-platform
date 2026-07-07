@@ -108,3 +108,25 @@ Por decisión de producto, `/app/*` no requiere autenticación: `AppRoutes.tsx` 
 4. **`AssistantChat.tsx`** (componente reutilizable) muestra la conversación y cada respuesta cita el documento y el encabezado exacto de origen — nunca texto generado, solo lo que el manual dice.
 
 Por qué esta forma y no un LLM real todavía: cualquier recomendación incorrecta sobre dimensionamiento o normativa eléctrica tiene riesgo de seguridad real (ver Manual Maestro §16, "Advertencias técnicas críticas"). Un buscador local sobre fuentes fijas no puede alucinar; un LLM sin RAG estricto y sin backend para ocultar la llave de API, sí. Migrar a un LLM real más adelante (`ROADMAP.md`, funcionalidades futuras) debería mantener esta misma restricción: responder solo con fuente citada.
+
+## 12. Documentación navegable (reutiliza la base del asistente)
+
+`DocsPage.tsx` (`/app/documentacion`) no duplica el parseo de los manuales: reutiliza `KNOWLEDGE_BASE` de `src/services/assistant/knowledgeBase.ts` como tabla de contenidos (agrupada por documento) y como fuente de contenido. La diferencia con el asistente es el modo de consumo, no la fuente de datos:
+
+- Asistente: modo pregunta → respuesta puntual con cita.
+- Documentación: modo lectura → navegar/buscar y leer la sección completa, renderizada como Markdown real (`MarkdownContent.tsx`, vía la librería `marked`) en vez de texto plano.
+
+`marked` se usa con `dangerouslySetInnerHTML` porque el contenido siempre viene de los `.md` del propio repo (nunca de input de usuario) — no hay superficie de XSS ahí. Si en el futuro la documentación admite contenido cargado por usuarios (por ejemplo, notas propias de un ingeniero), ese contenido **no** debe pasar por el mismo pipeline sin sanitización.
+
+## 13. Simulación: recomendación de equipos y plano a escala
+
+`SimulationPage.tsx` (`/app/simulacion`) es un flujo independiente de la pestaña "Dimensionamiento" de un proyecto (ver nota en `PROJECT_ANALYSIS.md` §6). Orquesta varios servicios ya existentes más tres nuevos, todos puros y sin estado de React:
+
+- **`services/calculations/dimensioning.ts`** (reutilizado, sin cambios): kWp requerido y número de paneles a partir de consumo, cobertura y HSP.
+- **`services/calculations/battery.ts`** (nuevo): capacidad nominal de batería a partir de energía crítica diaria, días de autonomía y los defaults de DoD/eficiencia/degradación por química (`BATTERY_CHEMISTRY_DEFAULTS`).
+- **`services/simulation/recommend.ts`** (nuevo): no inventa equipos — filtra `CATALOG_DATA` (el mismo catálogo de `/app/catalog`) y elige el inversor/batería real que mejor ajusta al requerimiento calculado, devolviendo también el arreglo de razones (`reasons: string[]`) que la UI muestra tal cual. Si el catálogo creciera con datos reales de fabricantes, esta función no cambia — solo mejora la calidad de las recomendaciones.
+- **`services/simulation/layout.ts`** (nuevo): dado un área (techo/patio) y las dimensiones físicas del panel elegido (`PVModule.dimensionsM`, agregado al modelo de catálogo), calcula cuántos paneles caben probando ambas orientaciones de montaje, dejando un margen perimetral de acceso. Si no caben todos los paneles requeridos, lo reporta explícitamente (`fits: false`, `missingPanels`) en vez de dibujar un plano incorrecto.
+- **`services/simulation/hspByCity.ts`** (nuevo): tabla de HSP de referencia por ciudad colombiana, explícitamente marcada como aproximada (no reemplaza `SolarResourceProvider` real de la §11 del roadmap); el campo queda editable en la UI para que el usuario lo sobrescriba.
+- **`components/engineering/SystemLayoutDiagram.tsx`** (nuevo): dibuja el resultado de `layout.ts` como un plano 2D a escala en SVG (equivalente ligero a una vista en planta de CAD) — rectángulo del techo/patio con cotas, margen de mantenimiento, y la grilla de paneles realmente ubicados.
+
+Ninguno de estos módulos depende de red ni de backend; todo el cálculo y el dibujo ocurren en el cliente con los datos que el usuario ingresa y el catálogo ya embebido.

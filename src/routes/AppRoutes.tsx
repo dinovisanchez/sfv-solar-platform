@@ -18,6 +18,8 @@ import { SettingsPage } from "@/pages/dashboard/SettingsPage";
 import { AdminPage } from "@/pages/dashboard/AdminPage";
 import { ProfilePage } from "@/pages/dashboard/ProfilePage";
 import { AssistantPage } from "@/pages/dashboard/AssistantPage";
+import { DocsPage } from "@/pages/dashboard/DocsPage";
+import { SimulationPage } from "@/pages/dashboard/SimulationPage";
 import { CatalogListPage } from "@/pages/catalog/CatalogListPage";
 
 import { NotFoundPage } from "@/pages/misc/NotFoundPage";
@@ -53,6 +55,8 @@ export function AppRoutes() {
         <Route path="admin" element={<AdminPage />} />
         <Route path="profile" element={<ProfilePage />} />
         <Route path="asistente" element={<AssistantPage />} />
+        <Route path="documentacion" element={<DocsPage />} />
+        <Route path="simulacion" element={<SimulationPage />} />
       </Route>
 
       <Route path="*" element={<NotFoundPage />} />

@@ -2,6 +2,24 @@
 
 Formato libre, en español, orientado a decisiones de producto/arquitectura más que a commits individuales.
 
+## [0.4.0] — 2026-07-07
+
+### Añadido
+
+- **Página de Documentación** (`/app/documentacion`): tabla de contenidos + buscador sobre el Manual Maestro y la Guía Práctica, con el contenido renderizado como Markdown real (`marked`), no como respuesta de chat. Reutiliza la misma base de conocimiento del asistente (`src/services/assistant/knowledgeBase.ts`).
+- **Página de Simulación** (`/app/simulacion`): formulario guiado de consumo, cobertura, ciudad (HSP de referencia editable), tipo de red, respaldo con batería (autonomía, energía y potencia crítica, química) y superficie de instalación (techo/patio con dimensiones). Calcula en vivo:
+  - Dimensionamiento FV (motor original reutilizado).
+  - Inversor recomendado del catálogo real, con relación DC/AC y motivo explicado.
+  - Batería recomendada del catálogo real (si aplica), con capacidad requerida, unidades necesarias y motivo explicado.
+  - Lista de elementos que incluye la instalación (paneles, inversor, batería, estructura, protecciones, cableado, puesta a tierra, monitoreo).
+  - Plano 2D a escala del arreglo de paneles sobre el techo/patio (`SystemLayoutDiagram`), con aviso explícito si no caben todos los paneles requeridos en el área indicada.
+- Nuevos servicios: `services/calculations/battery.ts` (capacidad nominal por autonomía/DoD/eficiencia), `services/simulation/recommend.ts` (selección de inversor/batería del catálogo con justificación), `services/simulation/layout.ts` (paneles que caben físicamente en un área), `services/simulation/hspByCity.ts` (referencia aproximada de HSP por ciudad colombiana).
+- `PVModule` ahora incluye `dimensionsM` (ancho/alto en metros) y `weightKg`, necesarios para calcular el layout físico.
+
+### Cambiado
+
+- `PROJECT_ANALYSIS.md`, `ARCHITECTURE.md` (nuevas secciones §12 y §13), `ROADMAP.md` (nueva Fase 0.6) y `TODO.md` actualizados.
+
 ## [0.3.0] — 2026-07-05
 
 ### Añadido

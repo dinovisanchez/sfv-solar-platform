@@ -86,3 +86,90 @@ input[type="range"] {
 ::selection {
   background: rgb(37 99 235 / 0.25);
 }
+
+/* Contenido Markdown renderizado desde los manuales de dominio (src/components/docs/MarkdownContent.tsx) */
+.prose-docs p {
+  margin: 0 0 0.85em;
+}
+
+.prose-docs strong {
+  color: rgb(var(--text-primary));
+  font-weight: 600;
+}
+
+.prose-docs ul,
+.prose-docs ol {
+  margin: 0 0 0.85em;
+  padding-left: 1.25em;
+}
+
+.prose-docs ul {
+  list-style: disc;
+}
+
+.prose-docs ol {
+  list-style: decimal;
+}
+
+.prose-docs li {
+  margin: 0.25em 0;
+}
+
+.prose-docs li > ul,
+.prose-docs li > ol {
+  margin-top: 0.25em;
+}
+
+.prose-docs a {
+  color: rgb(37 99 235);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.prose-docs blockquote {
+  margin: 0 0 0.85em;
+  padding: 0.5em 1em;
+  border-left: 3px solid rgb(var(--border-subtle));
+  color: rgb(var(--text-secondary));
+  font-style: italic;
+}
+
+.prose-docs code {
+  background: rgb(var(--surface-muted));
+  border-radius: 0.25em;
+  padding: 0.15em 0.4em;
+  font-size: 0.85em;
+}
+
+.prose-docs pre {
+  background: rgb(var(--surface-muted));
+  border: 1px solid rgb(var(--border-subtle));
+  border-radius: 0.75em;
+  padding: 0.85em 1em;
+  overflow-x: auto;
+  margin: 0 0 0.85em;
+}
+
+.prose-docs pre code {
+  background: none;
+  padding: 0;
+}
+
+.prose-docs table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 0.85em;
+  font-size: 0.9em;
+}
+
+.prose-docs th,
+.prose-docs td {
+  border: 1px solid rgb(var(--border-subtle));
+  padding: 0.4em 0.6em;
+  text-align: left;
+}
+
+.prose-docs th {
+  background: rgb(var(--surface-muted));
+  font-weight: 600;
+}

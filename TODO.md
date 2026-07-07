@@ -30,6 +30,15 @@ Pendientes concretos tras la migración a plataforma SaaS. Ordenados por área, 
 
 - [ ] Reemplazar `services/catalog/mockData.ts` por datos reales de fabricantes, con fichas versionadas (ver Manual Maestro §18 para el formato de metadatos sugerido).
 - [ ] Buscador/filtro server-side cuando el catálogo crezca más allá de lo manejable en cliente.
+- [ ] Agregar `dimensionsM`/`weightKg` reales (no aproximados) a cada panel del catálogo a medida que se cargan fichas de fabricantes reales.
+
+## Simulación
+
+- [ ] Conectar el resultado de `/app/simulacion` a un proyecto guardado (hoy es un flujo independiente de la pestaña "Dimensionamiento" del proyecto — ver `PROJECT_ANALYSIS.md` §6).
+- [ ] Reemplazar `services/simulation/hspByCity.ts` (valores de referencia aproximados) por el `SolarResourceProvider` real cuando se conecte NASA POWER/PVGIS/Open-Meteo.
+- [ ] `services/simulation/recommend.ts` hoy elige por relación DC/AC y ajuste de capacidad/potencia; sumar validación de tensión (Voc corregido por temperatura vs. rango MPPT del inversor) cuando el catálogo tenga más de un panel/inversor real por categoría.
+- [ ] `SystemLayoutDiagram` no considera obstáculos, sombras ni orientación/inclinación del techo — es un plano en planta simplificado, no un modelador 3D (eso sigue en Fase 4 del roadmap).
+- [ ] Pruebas unitarias para `battery.ts`, `layout.ts` y `recommend.ts` (mismo criterio que el resto de `services/calculations`).
 
 ## Calidad y tooling
 

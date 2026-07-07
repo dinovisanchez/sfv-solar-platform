@@ -14,7 +14,9 @@ const panels: PVModule[] = [
     vmp: 43.7,
     imp: 13.96,
     temperatureCoefficientVoc: -0.0025,
-    efficiency: 22.3
+    efficiency: 22.3,
+    dimensionsM: { width: 1.134, height: 2.278 },
+    weightKg: 32.8
   },
   {
     id: "panel-jinko-580",
@@ -29,7 +31,9 @@ const panels: PVModule[] = [
     vmp: 43.0,
     imp: 13.5,
     temperatureCoefficientVoc: -0.0024,
-    efficiency: 22.5
+    efficiency: 22.5,
+    dimensionsM: { width: 1.134, height: 2.278 },
+    weightKg: 28.6
   }
 ];
 
